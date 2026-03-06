@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>jq playground</title>
+    <title>Gundi Webhook Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
 </head>
@@ -16,12 +19,15 @@
         <header>
             <div class="header-left">
                 <span class="header-logo">{}</span>
-                <h1>jq playground</h1>
+                <h1>Gundi Webhook Editor</h1>
             </div>
             <div class="header-shortcuts">
                 <span class="shortcut-hint"><kbd>&#8984;Enter</kbd> Test</span>
                 <span class="shortcut-hint"><kbd>&#8984;S</kbd> Save</span>
                 <button id="themeToggle" class="theme-toggle" title="Toggle theme">&#9790;</button>
+                <span id="userEmail" class="user-email" style="display:none;"></span>
+                <button id="loginBtn" class="btn ghost" style="display:none;">Sign in</button>
+                <button id="logoutBtn" class="btn ghost" style="display:none;">Sign out</button>
             </div>
         </header>
 

@@ -6,6 +6,8 @@ let currentFilter = null;
 let samples = []; // { id, payload, label, result, error }
 let expandedSampleIds = new Set();
 let pollInterval = null;
+let authToken = null;
+let authDisabled = false;
 
 // ---- Theme ----
 
@@ -54,12 +56,97 @@ require(['vs/editor/editor.main'], function () {
     });
 
     setupEventListeners();
-    loadSavedFilters();
+    initAuth();
 
     window.addEventListener('resize', () => {
         filterEditor.layout();
     });
 });
+
+// ---- Auth ----
+
+async function initAuth() {
+    try {
+        const resp = await fetch('/api/config');
+        const config = await resp.json();
+        authDisabled = config.authDisabled;
+
+        if (authDisabled) {
+            document.getElementById('loginBtn').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'none';
+            loadSavedFilters();
+            return;
+        }
+
+        firebase.initializeApp({
+            apiKey: config.apiKey,
+            authDomain: config.authDomain,
+            projectId: config.projectId,
+        });
+
+        if (config.authEmulatorUrl) {
+            firebase.auth().useEmulator(config.authEmulatorUrl);
+        }
+
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user) {
+                authToken = await user.getIdToken();
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'inline-flex';
+                document.getElementById('userEmail').style.display = 'inline';
+                document.getElementById('userEmail').textContent = user.email;
+                loadSavedFilters();
+            } else {
+                authToken = null;
+                document.getElementById('loginBtn').style.display = 'inline-flex';
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('userEmail').style.display = 'none';
+            }
+        });
+
+        // Refresh token every 10 minutes
+        setInterval(async () => {
+            const user = firebase.auth().currentUser;
+            if (user) {
+                authToken = await user.getIdToken(true);
+            }
+        }, 10 * 60 * 1000);
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider);
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            firebase.auth().signOut();
+            authToken = null;
+            currentFilter = null;
+            samples = [];
+            renderSamples();
+            document.getElementById('filtersList').innerHTML = '';
+            updateEmptyState(0);
+        });
+    } catch (error) {
+        console.error('Auth init error:', error);
+        // Fallback: assume auth disabled
+        authDisabled = true;
+        loadSavedFilters();
+    }
+}
+
+async function apiFetch(url, options = {}) {
+    const headers = { ...(options.headers || {}) };
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401 && !authDisabled) {
+        showToast('Session expired. Please sign in again.', 'error');
+        firebase.auth().signOut();
+        throw new Error('Unauthorized');
+    }
+    return response;
+}
 
 function setupEventListeners() {
     document.getElementById('testBtn').addEventListener('click', testAllSamples);
@@ -137,7 +224,7 @@ function updateWebhookUrl() {
     const el = document.getElementById('webhookUrl');
     const textEl = document.getElementById('webhookUrlText');
     if (currentFilter) {
-        const url = `${window.location.origin}/webhook/${currentFilter.id}`;
+        const url = `${window.location.origin}/webhook/${currentFilter.value}`;
         textEl.textContent = `POST ${url}`;
         el.style.display = 'flex';
     } else {
@@ -147,7 +234,7 @@ function updateWebhookUrl() {
 
 function copyWebhookUrl() {
     if (!currentFilter) return;
-    const url = `${window.location.origin}/webhook/${currentFilter.id}`;
+    const url = `${window.location.origin}/webhook/${currentFilter.value}`;
     navigator.clipboard.writeText(url).then(() => {
         showToast('Webhook URL copied', 'success');
     });
@@ -197,7 +284,7 @@ function renderSamples() {
             const selection = window.getSelection();
             if (selection && selection.toString().length > 0) return;
             tr.classList.toggle('collapsed');
-            const idx = parseInt(tr.dataset.index);
+            const idx = Number(tr.dataset.index);
             const sampleId = samples[idx]?.id;
             if (sampleId != null) {
                 if (tr.classList.contains('collapsed')) {
@@ -211,7 +298,7 @@ function renderSamples() {
 
     // Attach delete handlers
     tbody.querySelectorAll('.sample-delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => deleteSample(parseInt(btn.dataset.sampleId)));
+        btn.addEventListener('click', () => deleteSample(btn.dataset.sampleId));
     });
 }
 
@@ -254,7 +341,7 @@ async function addSample() {
         return;
     }
     try {
-        const response = await fetch(`/api/filters/${currentFilter.id}/samples`, {
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/samples`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ payload: input })
@@ -277,7 +364,7 @@ async function addSample() {
 
 async function deleteSample(sampleId) {
     try {
-        const response = await fetch(`/api/samples/${sampleId}`, { method: 'DELETE' });
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/samples/${sampleId}`, { method: 'DELETE' });
         if (response.ok || response.status === 204) {
             samples = samples.filter(s => s.id !== sampleId);
             renderSamples();
@@ -291,7 +378,7 @@ async function deleteSample(sampleId) {
 async function clearAllSamples() {
     if (!currentFilter || samples.length === 0) return;
     try {
-        const response = await fetch(`/api/filters/${currentFilter.id}/samples`, { method: 'DELETE' });
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/samples`, { method: 'DELETE' });
         if (response.ok || response.status === 204) {
             samples = [];
             expandedSampleIds.clear();
@@ -310,7 +397,7 @@ async function loadSamples() {
         return;
     }
     try {
-        const response = await fetch(`/api/filters/${currentFilter.id}/samples`);
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/samples`);
         const data = await response.json();
         samples = data.map(s => ({
             id: s.id,
@@ -333,7 +420,7 @@ function startSamplePolling() {
     pollInterval = setInterval(async () => {
         if (!currentFilter) return;
         try {
-            const response = await fetch(`/api/filters/${currentFilter.id}/samples`);
+            const response = await apiFetch(`/api/filters/${currentFilter.id}/samples`);
             const data = await response.json();
             const newIds = new Set(data.map(s => s.id));
             const currentIds = new Set(samples.map(s => s.id));
@@ -369,7 +456,7 @@ async function testAllSamples() {
     const inputs = samples.map(s => s.payload);
 
     try {
-        const response = await fetch('/api/test-bulk', {
+        const response = await apiFetch('/api/test-bulk', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filter_expression: filterExpression, inputs })
@@ -408,7 +495,7 @@ async function saveFilter() {
             ? `/api/filters/${currentFilter.id}`
             : '/api/filters';
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -425,6 +512,9 @@ async function saveFilter() {
             updateDeleteButton();
             updateWebhookUrl();
             await loadSavedFilters();
+            await loadSamples();
+            testAllSamples();
+            startSamplePolling();
             showToast('Filter saved', 'success');
         } else {
             const error = await response.json();
@@ -439,7 +529,7 @@ async function deleteFilter() {
     if (!currentFilter) return;
 
     try {
-        const response = await fetch(`/api/filters/${currentFilter.id}`, {
+        const response = await apiFetch(`/api/filters/${currentFilter.id}`, {
             method: 'DELETE'
         });
 
@@ -457,7 +547,7 @@ async function deleteFilter() {
 
 async function loadSavedFilters() {
     try {
-        const response = await fetch('/api/filters');
+        const response = await apiFetch('/api/filters');
         const filters = await response.json();
 
         const filtersList = document.getElementById('filtersList');
@@ -495,7 +585,7 @@ async function loadSavedFilters() {
 
 async function deleteFilterById(id, name) {
     try {
-        const response = await fetch(`/api/filters/${id}`, { method: 'DELETE' });
+        const response = await apiFetch(`/api/filters/${id}`, { method: 'DELETE' });
         if (response.ok || response.status === 204) {
             showToast(`Deleted "${name}"`, 'info');
             if (currentFilter?.id === id) {

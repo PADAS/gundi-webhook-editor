@@ -1,5 +1,5 @@
 /* ============================================
-   jq playground - Theming
+   Gundi Webhook Editor - Theming
    ============================================ */
 
 :root {
@@ -173,6 +173,15 @@ h1 {
 .theme-toggle:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .shortcut-hint {

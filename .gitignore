@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+filters.db
+.env
+.venv
+
+# OpenTofu / Terraform
+infra/.terraform/
+infra/*.tfstate*
+infra/.terraform.lock.hcl
+infra/terraform.tfvars

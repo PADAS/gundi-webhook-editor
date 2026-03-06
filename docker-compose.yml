@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - FIREBASE_API_KEY=fake-api-key
+      - FIREBASE_AUTH_DOMAIN=localhost
+      - FIREBASE_PROJECT_ID=cdip-dev-78ca
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8181
+      - GCLOUD_PROJECT=demo-jq-editor
+    depends_on:
+      - firebase-emulator
+
+  firebase-emulator:
+    image: eclipse-temurin:21-jre-noble
+    working_dir: /srv
+    volumes:
+      - ./firebase.json:/srv/firebase.json:ro
+    ports:
+      - "9099:9099"
+      - "8181:8181"
+      - "4000:4000"
+    command: >
+      sh -c "apt-get update && apt-get install -y --no-install-recommends curl &&
+             curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&
+             apt-get install -y --no-install-recommends nodejs &&
+             npm install -g firebase-tools &&
+             firebase emulators:start --project demo-jq-editor"
