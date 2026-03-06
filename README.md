@@ -47,4 +47,4 @@ GCP infrastructure is managed with [OpenTofu](https://opentofu.org/) in the `inf
 
 ## License
 
-MIT License
+Apache License Version 2.0
