@@ -13,7 +13,24 @@ except ImportError:
     # This is just for the linter, the actual import will work at runtime
     jq = None
 from typing import List, Optional
+from anthropic import AnthropicVertex
 from auth import verify_firebase_token, _init_firebase
+
+VERTEX_AI_PROJECT = os.environ.get("VERTEX_AI_PROJECT") or os.environ.get("GCLOUD_PROJECT") or os.environ.get("FIREBASE_PROJECT_ID")
+VERTEX_AI_LOCATION = os.environ.get("VERTEX_AI_LOCATION", "us-east5")
+
+_vertex_client: Optional[AnthropicVertex] = None
+
+def _get_vertex_client() -> Optional[AnthropicVertex]:
+    global _vertex_client
+    if _vertex_client is None:
+        if not VERTEX_AI_PROJECT:
+            return None
+        try:
+            _vertex_client = AnthropicVertex(project_id=VERTEX_AI_PROJECT, region=VERTEX_AI_LOCATION)
+        except Exception:
+            return None
+    return _vertex_client
 
 # Create FastAPI app
 app = FastAPI(title="Gundi Webhook Editor")
@@ -86,6 +103,16 @@ class BulkFilterTest(BaseModel):
 
 class BulkFilterTestResponse(BaseModel):
     results: List[FilterTestResponse]
+
+class AIChatRequest(BaseModel):
+    message: str
+    filter_expression: Optional[str] = None
+    sample_json: Optional[str] = None
+    history: Optional[List[dict]] = None
+
+class AIChatResponse(BaseModel):
+    response: Optional[str] = None
+    error: Optional[str] = None
 
 class SampleCreate(BaseModel):
     payload: str
@@ -390,6 +417,49 @@ async def webhook_receive(filter_value: str, request: Request):
         "received_at": now,
     })
     return {"id": sample_ref.id, "status": "received"}
+
+
+@app.post("/api/ai/chat", response_model=AIChatResponse)
+async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
+    client = _get_vertex_client()
+    if not client:
+        return AIChatResponse(error="AI assistant not configured. Check Vertex AI configuration.")
+
+    system_prompt = (
+        "You are a concise jq expert assistant. Help users write and debug jq filter expressions. "
+        "When showing jq expressions, use ```jq code blocks. Keep responses short and practical. "
+        "If the user provides their current filter or sample JSON, reference them in your answer."
+    )
+
+    context_parts = []
+    if req.filter_expression:
+        context_parts.append(f"Current filter: {req.filter_expression}")
+    if req.sample_json:
+        context_parts.append(f"Sample input JSON: {req.sample_json}")
+
+    messages = []
+    if req.history:
+        for h in req.history[-10:]:
+            if h.get("role") in ("user", "assistant") and h.get("content"):
+                messages.append({"role": h["role"], "content": h["content"]})
+
+    user_message = req.message
+    if context_parts:
+        user_message = "\n".join(context_parts) + "\n\n" + user_message
+
+    messages.append({"role": "user", "content": user_message})
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4@20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages,
+        )
+        text = response.content[0].text
+        return AIChatResponse(response=text)
+    except Exception as e:
+        return AIChatResponse(error=str(e))
 
 
 def firestore_transaction(db):

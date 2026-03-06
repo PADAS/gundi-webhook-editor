@@ -12,6 +12,7 @@ services:
       - FIREBASE_AUTH_EMULATOR_URL=http://localhost:9099
       - FIRESTORE_EMULATOR_HOST=firebase-emulator:8181
       - GCLOUD_PROJECT=demo-jq-editor
+      - AUTH_DISABLED=true
     depends_on:
       - firebase-emulator
 

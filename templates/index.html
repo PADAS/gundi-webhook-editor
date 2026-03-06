@@ -24,6 +24,7 @@
             <div class="header-shortcuts">
                 <span class="shortcut-hint"><kbd>&#8984;Enter</kbd> Test</span>
                 <span class="shortcut-hint"><kbd>&#8984;S</kbd> Save</span>
+                <button id="helpToggle" class="btn ghost help-toggle-btn">? Help</button>
                 <button id="themeToggle" class="theme-toggle" title="Toggle theme">&#9790;</button>
                 <span id="userEmail" class="user-email" style="display:none;"></span>
                 <button id="loginBtn" class="btn ghost" style="display:none;">Sign in</button>
@@ -125,7 +126,12 @@
     </div>
 
     <div id="toastContainer"></div>
+    <div id="helpDrawer" class="help-drawer"></div>
 
+    <script src="{{ url_for('static', path='js/jq-reference.js') }}"></script>
+    <script src="{{ url_for('static', path='js/jq-examples.js') }}"></script>
+    <script src="{{ url_for('static', path='js/jq-language.js') }}"></script>
     <script src="{{ url_for('static', path='js/app.js') }}"></script>
+    <script src="{{ url_for('static', path='js/help-drawer.js') }}"></script>
 </body>
 </html>

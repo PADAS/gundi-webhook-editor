@@ -22,6 +22,7 @@ locals {
     "iamcredentials.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "firestore.googleapis.com",
+    "aiplatform.googleapis.com",
   ]
 }
 
@@ -76,10 +77,18 @@ resource "google_project_iam_member" "deploy" {
   member   = "serviceAccount:${google_service_account.deploy.email}"
 }
 
+locals {
+  runtime_roles = [
+    "roles/datastore.user",
+    "roles/aiplatform.user",
+  ]
+}
+
 resource "google_project_iam_member" "runtime" {
-  project = var.project_id
-  role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_service_account.runtime.email}"
+  for_each = toset(local.runtime_roles)
+  project  = var.project_id
+  role     = each.value
+  member   = "serviceAccount:${google_service_account.runtime.email}"
 }
 
 # --- Workload Identity Federation ---

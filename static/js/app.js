@@ -49,14 +49,21 @@ const editorOptions = {
 };
 
 require(['vs/editor/editor.main'], function () {
+    if (typeof registerJqLanguage === 'function') {
+        registerJqLanguage();
+    }
+
     filterEditor = monaco.editor.create(document.getElementById('filterEditor'), {
         value: '.',
-        language: 'plaintext',
+        language: 'jq',
         ...editorOptions
     });
 
     setupEventListeners();
     initAuth();
+    if (typeof initHelpDrawer === 'function') {
+        initHelpDrawer();
+    }
 
     window.addEventListener('resize', () => {
         filterEditor.layout();
@@ -168,10 +175,18 @@ function setupEventListeners() {
         debounceTimeout = setTimeout(testAllSamples, 500);
     });
 
+    // Help drawer toggle
+    document.getElementById('helpToggle').addEventListener('click', () => {
+        if (typeof toggleHelpDrawer === 'function') toggleHelpDrawer();
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         const mod = e.metaKey || e.ctrlKey;
-        if (mod && e.key === 'Enter') {
+        if (mod && e.shiftKey && (e.key === 'h' || e.key === 'H')) {
+            e.preventDefault();
+            if (typeof toggleHelpDrawer === 'function') toggleHelpDrawer();
+        } else if (mod && e.key === 'Enter') {
             e.preventDefault();
             testAllSamples();
         } else if (mod && e.key === 's') {
