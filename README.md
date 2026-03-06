@@ -1,74 +1,49 @@
-# JQ Filter Editor
+# Gundi Webhook Editor
 
-A web application that allows users to create, edit, and test jq filters against JSON documents. This tool helps users develop and validate their jq filters in real-time.
+A web app for creating, editing, and testing jq filters against JSON documents. Built with FastAPI and Monaco Editor, deployed to GCP Cloud Run with Firebase Authentication.
 
 ## Features
 
-- Interactive jq filter editor
-- Real-time JSON document editing
-- Live preview of filter results
-- Save and manage multiple filters
-- Natural language descriptions for filters
-- SQLite database for persistent storage
-- FastAPI backend with automatic API documentation
+- Interactive jq filter editor with Monaco Editor
+- Real-time filter testing against JSON input
+- Save and manage multiple named filters
+- Firebase Authentication with email allowlisting
+- Firestore persistence (SQLite for local dev)
 
-## Prerequisites
+## Local Development
 
-- Python 3.8 or higher
-- pip (Python package manager)
+### With Docker (recommended)
 
-## Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd jq-editor
+docker compose up -d --build
 ```
 
-2. Create a virtual environment (recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
-```
+This starts the app at `http://localhost:8080` with Firebase Auth and Firestore emulators.
 
-3. Install dependencies:
+### Without Docker
+
+Requires Python 3.10+ and the system `jq` library (`libjq`).
+
 ```bash
 pip install -r requirements.txt
+AUTH_DISABLED=true uvicorn app:app --reload
 ```
 
-## Usage
+App runs at `http://localhost:8000`. API docs at `/docs`.
 
-1. Start the application:
-```bash
-uvicorn app:app --reload
-```
+## Infrastructure
 
-2. Open your web browser and navigate to:
-   - Main application: `http://localhost:8000`
-   - API documentation: `http://localhost:8000/docs`
+GCP infrastructure is managed with [OpenTofu](https://opentofu.org/) in the `infra/` directory. See [DEPLOY.md](DEPLOY.md) for full provisioning and deployment instructions.
 
-3. Create a new filter:
-   - Enter a name for your filter
-   - Add a natural language description
-   - Write your jq filter expression
-   - Add sample JSON to test against
-   - Click "Test" to see the results
-   - Click "Save" to store the filter
+## Tech Stack
 
-## Development
-
-The application is built with:
-- FastAPI (Backend)
-- SQLite (Database)
-- HTML/CSS/JavaScript (Frontend)
-- Monaco Editor (Code editing)
-- jq (JSON processing)
-
-## API Documentation
-
-FastAPI automatically generates interactive API documentation. You can access it at:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- **Backend:** FastAPI, SQLAlchemy, jq (Python bindings)
+- **Frontend:** Vanilla JS, Monaco Editor
+- **Auth:** Firebase Authentication
+- **Database:** Firestore (production), SQLite (local)
+- **Infra:** GCP Cloud Run, Artifact Registry, Workload Identity Federation
+- **IaC:** OpenTofu
+- **CI/CD:** GitHub Actions
 
 ## License
 
