@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jq playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <span class="header-logo">{}</span>
+                <h1>jq playground</h1>
+            </div>
+            <div class="header-shortcuts">
+                <span class="shortcut-hint"><kbd>&#8984;Enter</kbd> Test</span>
+                <span class="shortcut-hint"><kbd>&#8984;S</kbd> Save</span>
+                <button id="themeToggle" class="theme-toggle" title="Toggle theme">&#9790;</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="filters-panel">
+                <div class="filters-header">
+                    <span class="section-label"><span class="dot accent"></span> Filters</span>
+                    <button id="newFilterBtn" class="btn ghost">+ New</button>
+                </div>
+                <div id="filtersList" class="filters-list"></div>
+                <div id="emptyState" style="display:none;">
+                    <span class="empty-icon">{ }</span>
+                    <span>No saved filters yet</span>
+                    <span style="font-size:0.7rem;">Click <strong>+ New</strong> to create one</span>
+                </div>
+            </div>
+
+            <div class="editor-panel">
+                <div class="filter-details">
+                    <div class="field-group">
+                        <label for="filterName">Name</label>
+                        <input type="text" id="filterName" placeholder="my-filter" class="input-field">
+                    </div>
+                    <div class="field-group">
+                        <label for="filterValue">Value</label>
+                        <input type="text" id="filterValue" placeholder="filter_value" class="input-field">
+                    </div>
+                    <div class="field-group">
+                        <label for="filterDescription">Description</label>
+                        <input type="text" id="filterDescription" placeholder="What does this filter do?" class="input-field">
+                    </div>
+                </div>
+
+                <div class="editor-main">
+                    <div class="filter-editor-column">
+                        <div class="section-header">
+                            <span class="dot accent"></span>
+                            <h3>jq filter</h3>
+                        </div>
+                        <div id="filterEditor" class="editor"></div>
+                    </div>
+
+                    <div class="samples-column">
+                        <div class="samples-header">
+                            <span class="section-label"><span class="dot green"></span> Samples</span>
+                            <div class="samples-actions">
+                                <div id="webhookUrl" class="webhook-url" style="display:none;">
+                                    <kbd id="webhookUrlText"></kbd>
+                                    <button id="copyWebhookBtn" class="btn ghost" title="Copy webhook URL">Copy</button>
+                                </div>
+                                <button id="clearSamplesBtn" class="btn ghost" style="display:none;">Clear All</button>
+                                <button id="addSampleBtn" class="btn ghost">+ Add Sample</button>
+                            </div>
+                        </div>
+                        <div class="samples-table-wrapper">
+                            <table class="samples-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-status"></th>
+                                        <th class="col-input">Input</th>
+                                        <th class="col-output">Output</th>
+                                        <th class="col-actions"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="samplesBody"></tbody>
+                            </table>
+                            <div id="samplesEmpty" class="samples-empty">
+                                No samples yet. Add one manually or send data via webhook.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="deleteBtn" class="btn danger">Delete</button>
+                    <button id="testBtn" class="btn secondary">Test All <kbd>&#8984;&#9166;</kbd></button>
+                    <button id="saveBtn" class="btn primary">Save <kbd>&#8984;S</kbd></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addSampleModal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Sample</h3>
+            </div>
+            <textarea id="sampleInput" class="sample-textarea" placeholder='{ "key": "value" }' spellcheck="false"></textarea>
+            <div class="modal-actions">
+                <button id="cancelSampleBtn" class="btn secondary">Cancel</button>
+                <button id="saveSampleBtn" class="btn primary">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
+</body>
+</html>
