@@ -8,6 +8,7 @@ let expandedSampleIds = new Set();
 let pollInterval = null;
 let authToken = null;
 let authDisabled = false;
+let currentUser = null;
 
 // ---- Theme ----
 
@@ -97,6 +98,7 @@ async function initAuth() {
 
         firebase.auth().onAuthStateChanged(async (user) => {
             if (user) {
+                currentUser = user;
                 authToken = await user.getIdToken();
                 document.getElementById('loginBtn').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'inline-flex';
@@ -104,6 +106,7 @@ async function initAuth() {
                 document.getElementById('userEmail').textContent = user.email;
                 loadSavedFilters();
             } else {
+                currentUser = null;
                 authToken = null;
                 document.getElementById('loginBtn').style.display = 'inline-flex';
                 document.getElementById('logoutBtn').style.display = 'none';
@@ -166,6 +169,7 @@ function setupEventListeners() {
     document.getElementById('saveSampleBtn').addEventListener('click', addSample);
     document.getElementById('copyWebhookBtn').addEventListener('click', copyWebhookUrl);
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('shareBtn').addEventListener('click', shareEmail);
     document.querySelector('.modal-backdrop').addEventListener('click', closeAddSampleModal);
 
     // Auto-test on filter change (debounced)
@@ -526,6 +530,7 @@ async function saveFilter() {
             currentFilter = data;
             updateDeleteButton();
             updateWebhookUrl();
+            updateOwnershipUI();
             await loadSavedFilters();
             await loadSamples();
             testAllSamples();
@@ -573,9 +578,10 @@ async function loadSavedFilters() {
         filters.forEach(filter => {
             const filterElement = document.createElement('div');
             filterElement.className = `filter-item ${currentFilter?.id === filter.id ? 'active' : ''}`;
+            const isShared = filter.owner_uid && currentUser && filter.owner_uid !== currentUser.uid;
             filterElement.innerHTML = `
                 <div class="filter-item-content">
-                    <div class="filter-item-name">${escapeHtml(filter.name)}</div>
+                    <div class="filter-item-name">${escapeHtml(filter.name)}${isShared ? '<span class="filter-shared-badge">shared</span>' : ''}</div>
                     <div class="filter-item-desc">${escapeHtml(filter.description || '')}</div>
                 </div>
                 <button class="filter-item-delete" title="Delete filter">&times;</button>
@@ -622,6 +628,7 @@ async function loadFilter(filter) {
     filterEditor.setValue(filter.filter_expression);
     updateDeleteButton();
     updateWebhookUrl();
+    updateOwnershipUI();
     await loadSavedFilters();
     await loadSamples();
     testAllSamples();
@@ -640,6 +647,7 @@ function newFilter() {
     renderSamples();
     updateDeleteButton();
     updateWebhookUrl();
+    updateOwnershipUI();
     loadSavedFilters();
 }
 
@@ -647,4 +655,91 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ---- Ownership & Share Panel ----
+
+function updateOwnershipUI() {
+    const isOwner = authDisabled
+        || !currentFilter
+        || !currentFilter.owner_uid
+        || (currentUser && currentFilter.owner_uid === currentUser.uid);
+
+    document.getElementById('saveBtn').disabled = currentFilter ? !isOwner : false;
+    document.getElementById('deleteBtn').disabled = currentFilter ? !isOwner : false;
+
+    const panel = document.getElementById('sharePanel');
+    if (!panel) return;
+
+    // Show share panel only for owners of saved filters
+    if (currentFilter && isOwner && !authDisabled && currentUser) {
+        panel.style.display = 'block';
+        renderSharedWithList();
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function renderSharedWithList() {
+    const list = document.getElementById('sharedWithList');
+    if (!list || !currentFilter) return;
+    const emails = currentFilter.shared_with || [];
+    if (emails.length === 0) {
+        list.innerHTML = '<div class="shared-with-empty">Not shared with anyone yet.</div>';
+        return;
+    }
+    list.innerHTML = emails.map(email => `
+        <div class="shared-with-item">
+            <span>${escapeHtml(email)}</span>
+            <button class="share-remove-btn" data-email="${escapeHtml(email)}" title="Remove">&times;</button>
+        </div>
+    `).join('');
+    list.querySelectorAll('.share-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => unshareEmail(btn.dataset.email));
+    });
+}
+
+async function shareEmail() {
+    const input = document.getElementById('shareEmailInput');
+    const email = input.value.trim();
+    if (!email || !currentFilter) return;
+    try {
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/share`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            currentFilter.shared_with = data.shared_with;
+            input.value = '';
+            renderSharedWithList();
+            showToast(`Shared with ${email}`, 'success');
+        } else {
+            const err = await response.json();
+            showToast(`Error: ${err.detail}`, 'error');
+        }
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+    }
+}
+
+async function unshareEmail(email) {
+    if (!currentFilter) return;
+    try {
+        const response = await apiFetch(`/api/filters/${currentFilter.id}/share/${encodeURIComponent(email)}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            currentFilter.shared_with = data.shared_with;
+            renderSharedWithList();
+            showToast(`Removed ${email}`, 'info');
+        } else {
+            const err = await response.json();
+            showToast(`Error: ${err.detail}`, 'error');
+        }
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+    }
 }
