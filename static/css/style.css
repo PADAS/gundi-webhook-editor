@@ -1233,6 +1233,92 @@ tr:hover .sample-delete-btn {
     font-size: 0.8rem;
 }
 
+/* ---- Filter Shared Badge ---- */
+
+.filter-shared-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    background: var(--accent-muted);
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+/* ---- Share Panel ---- */
+
+.share-panel {
+    border-top: 1px solid var(--border);
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+}
+
+.share-panel-header {
+    margin-bottom: 0.5rem;
+}
+
+.shared-with-list {
+    margin-bottom: 0.5rem;
+}
+
+.shared-with-empty {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    padding: 0.2rem 0;
+}
+
+.shared-with-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.shared-with-item:hover {
+    background: var(--bg-hover);
+}
+
+.share-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 0.2rem;
+    border-radius: 3px;
+    line-height: 1;
+    opacity: 0;
+    transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.shared-with-item:hover .share-remove-btn {
+    opacity: 1;
+}
+
+.share-remove-btn:hover {
+    color: var(--error);
+}
+
+.share-input-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.share-input-row .input-field {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+}
+
 /* ---- Responsive: narrow viewport drawer full-width ---- */
 
 @media (max-width: 900px) {

@@ -88,6 +88,8 @@ class Filter(FilterBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    owner_uid: Optional[str] = None
+    shared_with: Optional[List[str]] = None
 
 class FilterTest(BaseModel):
     filter_expression: str
@@ -103,6 +105,9 @@ class BulkFilterTest(BaseModel):
 
 class BulkFilterTestResponse(BaseModel):
     results: List[FilterTestResponse]
+
+class ShareRequest(BaseModel):
+    email: str
 
 class AIChatRequest(BaseModel):
     message: str
@@ -124,6 +129,22 @@ class SampleOut(BaseModel):
     payload: str
     label: Optional[str] = None
     received_at: datetime
+
+
+def _is_owner(doc_data: dict, user: dict) -> bool:
+    owner_uid = doc_data.get("owner_uid")
+    return owner_uid is not None and owner_uid == user["uid"]
+
+
+def _can_read(doc_data: dict, user: dict) -> bool:
+    owner_uid = doc_data.get("owner_uid")
+    if owner_uid is None:
+        return True  # legacy filter, visible to all
+    if owner_uid == user["uid"]:
+        return True
+    if user.get("email") in doc_data.get("shared_with", []):
+        return True
+    return False
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -150,6 +171,8 @@ async def get_filters(user=Depends(verify_firebase_token)):
     results = []
     for doc in docs:
         data = doc.to_dict()
+        if not _can_read(data, user):
+            continue
         results.append(Filter(
             id=doc.id,
             name=data["name"],
@@ -158,6 +181,8 @@ async def get_filters(user=Depends(verify_firebase_token)):
             filter_expression=data["filter_expression"],
             created_at=data["created_at"],
             updated_at=data["updated_at"],
+            owner_uid=data.get("owner_uid"),
+            shared_with=data.get("shared_with", []),
         ))
     return results
 
@@ -187,6 +212,8 @@ async def create_filter(filter: FilterCreate, user=Depends(verify_firebase_token
             "filter_expression": filter.filter_expression,
             "created_at": now,
             "updated_at": now,
+            "owner_uid": user["uid"],
+            "shared_with": [],
         })
         transaction.set(val_ref, {"filter_id": filter_ref.id})
         return filter_ref.id
@@ -200,6 +227,8 @@ async def create_filter(filter: FilterCreate, user=Depends(verify_firebase_token
         filter_expression=filter.filter_expression,
         created_at=now,
         updated_at=now,
+        owner_uid=user["uid"],
+        shared_with=[],
     )
 
 @app.get("/api/filters/{filter_id}", response_model=Filter)
@@ -209,6 +238,8 @@ async def get_filter(filter_id: str, user=Depends(verify_firebase_token)):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Filter not found")
     data = doc.to_dict()
+    if not _can_read(data, user):
+        raise HTTPException(status_code=403, detail="Access denied")
     return Filter(
         id=doc.id,
         name=data["name"],
@@ -217,6 +248,8 @@ async def get_filter(filter_id: str, user=Depends(verify_firebase_token)):
         filter_expression=data["filter_expression"],
         created_at=data["created_at"],
         updated_at=data["updated_at"],
+        owner_uid=data.get("owner_uid"),
+        shared_with=data.get("shared_with", []),
     )
 
 @app.put("/api/filters/{filter_id}", response_model=Filter)
@@ -238,6 +271,8 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
             raise HTTPException(status_code=404, detail="Filter not found")
 
         old_data = snap.to_dict()
+        if old_data.get("owner_uid") and not _is_owner(old_data, user):
+            raise HTTPException(status_code=403, detail="Only the owner can edit this filter")
         old_value = old_data["value"]
 
         if new_value != old_value:
@@ -257,9 +292,9 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
             "filter_expression": filter.filter_expression,
             "updated_at": now,
         })
-        return old_data["created_at"]
+        return old_data["created_at"], old_data.get("owner_uid"), old_data.get("shared_with", [])
 
-    created_at = txn_update()
+    created_at, owner_uid, shared_with = txn_update()
     return Filter(
         id=filter_id,
         name=filter.name,
@@ -268,6 +303,8 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
         filter_expression=filter.filter_expression,
         created_at=created_at,
         updated_at=now,
+        owner_uid=owner_uid,
+        shared_with=shared_with,
     )
 
 @app.delete("/api/filters/{filter_id}", status_code=204)
@@ -279,6 +316,8 @@ async def delete_filter(filter_id: str, user=Depends(verify_firebase_token)):
         raise HTTPException(status_code=404, detail="Filter not found")
 
     data = snap.to_dict()
+    if data.get("owner_uid") and not _is_owner(data, user):
+        raise HTTPException(status_code=403, detail="Only the owner can delete this filter")
     # Delete samples subcollection
     delete_subcollection(filter_ref, "samples")
     # Delete filter_values index
@@ -286,6 +325,38 @@ async def delete_filter(filter_id: str, user=Depends(verify_firebase_token)):
     # Delete filter doc
     filter_ref.delete()
     return None
+
+@app.post("/api/filters/{filter_id}/share")
+async def share_filter(filter_id: str, req: ShareRequest, user=Depends(verify_firebase_token)):
+    db = get_firestore()
+    from google.cloud.firestore import ArrayUnion
+    filter_ref = db.collection("filters").document(filter_id)
+    snap = filter_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Filter not found")
+    data = snap.to_dict()
+    if not _is_owner(data, user):
+        raise HTTPException(status_code=403, detail="Only the owner can share this filter")
+    filter_ref.update({"shared_with": ArrayUnion([req.email])})
+    updated = filter_ref.get().to_dict()
+    return {"shared_with": updated.get("shared_with", [])}
+
+
+@app.delete("/api/filters/{filter_id}/share/{email}")
+async def unshare_filter(filter_id: str, email: str, user=Depends(verify_firebase_token)):
+    db = get_firestore()
+    from google.cloud.firestore import ArrayRemove
+    filter_ref = db.collection("filters").document(filter_id)
+    snap = filter_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Filter not found")
+    data = snap.to_dict()
+    if not _is_owner(data, user):
+        raise HTTPException(status_code=403, detail="Only the owner can unshare this filter")
+    filter_ref.update({"shared_with": ArrayRemove([email])})
+    updated = filter_ref.get().to_dict()
+    return {"shared_with": updated.get("shared_with", [])}
+
 
 @app.post("/api/test", response_model=FilterTestResponse)
 async def test_filter(filter_test: FilterTest, user=Depends(verify_firebase_token)):
