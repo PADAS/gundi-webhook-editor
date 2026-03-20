@@ -9,6 +9,7 @@ let pollInterval = null;
 let authToken = null;
 let authDisabled = false;
 let currentUser = null;
+let devUser = null;
 
 // ---- Theme ----
 
@@ -82,7 +83,7 @@ async function initAuth() {
         if (authDisabled) {
             document.getElementById('loginBtn').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'none';
-            loadSavedFilters();
+            initDevUserSwitcher();
             return;
         }
 
@@ -144,10 +145,42 @@ async function initAuth() {
     }
 }
 
+function initDevUserSwitcher() {
+    const saved = localStorage.getItem('devUser') || 'user-a@dev.local';
+    devUser = saved;
+
+    const switcher = document.getElementById('devUserSwitcher');
+    const select = document.getElementById('devUserSelect');
+    switcher.style.display = 'flex';
+    select.value = devUser;
+
+    select.addEventListener('change', () => switchDevUser(select.value));
+
+    loadSavedFilters();
+}
+
+function switchDevUser(email) {
+    localStorage.setItem('devUser', email);
+    devUser = email;
+
+    stopSamplePolling();
+    currentFilter = null;
+    samples = [];
+    expandedSampleIds.clear();
+    renderSamples();
+    updateDeleteButton();
+    updateWebhookUrl();
+    updateOwnershipUI();
+    loadSavedFilters();
+}
+
 async function apiFetch(url, options = {}) {
     const headers = { ...(options.headers || {}) };
     if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    if (authDisabled && devUser) {
+        headers['X-Dev-User'] = devUser;
     }
     const response = await fetch(url, { ...options, headers });
     if (response.status === 401 && !authDisabled) {
@@ -578,7 +611,13 @@ async function loadSavedFilters() {
         filters.forEach(filter => {
             const filterElement = document.createElement('div');
             filterElement.className = `filter-item ${currentFilter?.id === filter.id ? 'active' : ''}`;
-            const isShared = filter.owner_uid && currentUser && filter.owner_uid !== currentUser.uid;
+            let isShared;
+            if (authDisabled && devUser) {
+                const devUid = "dev_" + devUser.replace("@", "_at_").replace(/\./g, "_");
+                isShared = filter.owner_uid && filter.owner_uid !== devUid;
+            } else {
+                isShared = filter.owner_uid && currentUser && filter.owner_uid !== currentUser.uid;
+            }
             filterElement.innerHTML = `
                 <div class="filter-item-content">
                     <div class="filter-item-name">${escapeHtml(filter.name)}${isShared ? '<span class="filter-shared-badge">shared</span>' : ''}</div>
@@ -660,10 +699,15 @@ function escapeHtml(text) {
 // ---- Ownership & Share Panel ----
 
 function updateOwnershipUI() {
-    const isOwner = authDisabled
-        || !currentFilter
-        || !currentFilter.owner_uid
-        || (currentUser && currentFilter.owner_uid === currentUser.uid);
+    let isOwner;
+    if (!currentFilter || !currentFilter.owner_uid) {
+        isOwner = true;
+    } else if (authDisabled && devUser) {
+        const devUid = "dev_" + devUser.replace("@", "_at_").replace(/\./g, "_");
+        isOwner = currentFilter.owner_uid === devUid;
+    } else {
+        isOwner = currentUser && currentFilter.owner_uid === currentUser.uid;
+    }
 
     document.getElementById('saveBtn').disabled = currentFilter ? !isOwner : false;
     document.getElementById('deleteBtn').disabled = currentFilter ? !isOwner : false;
@@ -671,8 +715,8 @@ function updateOwnershipUI() {
     const panel = document.getElementById('sharePanel');
     if (!panel) return;
 
-    // Show share panel only for owners of saved filters
-    if (currentFilter && isOwner && !authDisabled && currentUser) {
+    // Show share panel for owners of saved filters (in dev mode too)
+    if (currentFilter && isOwner && (authDisabled || currentUser)) {
         panel.style.display = 'block';
         renderSharedWithList();
     } else {

@@ -1326,3 +1326,33 @@ tr:hover .sample-delete-btn {
         width: 100%;
     }
 }
+
+/* ---- Dev User Switcher ---- */
+
+.dev-user-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--accent-muted);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.5rem;
+}
+
+.dev-label {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+#devUserSelect {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    outline: none;
+}

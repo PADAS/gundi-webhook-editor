@@ -26,6 +26,14 @@
                 <span class="shortcut-hint"><kbd>&#8984;S</kbd> Save</span>
                 <button id="helpToggle" class="btn ghost help-toggle-btn">? Help</button>
                 <button id="themeToggle" class="theme-toggle" title="Toggle theme">&#9790;</button>
+                <div id="devUserSwitcher" class="dev-user-switcher" style="display:none;">
+                    <span class="dev-label">Dev user:</span>
+                    <select id="devUserSelect">
+                        <option value="user-a@dev.local">user-a</option>
+                        <option value="user-b@dev.local">user-b</option>
+                        <option value="user-c@dev.local">user-c</option>
+                    </select>
+                </div>
                 <span id="userEmail" class="user-email" style="display:none;"></span>
                 <button id="loginBtn" class="btn ghost" style="display:none;">Sign in</button>
                 <button id="logoutBtn" class="btn ghost" style="display:none;">Sign out</button>

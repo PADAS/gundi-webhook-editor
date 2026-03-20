@@ -31,7 +31,9 @@ def _check_allowed(email: str) -> bool:
 
 async def verify_firebase_token(request: Request):
     if AUTH_DISABLED:
-        return {"uid": "local", "email": "local@dev"}
+        dev_email = request.headers.get("X-Dev-User", "user-a@dev.local")
+        dev_uid = "dev_" + dev_email.replace("@", "_at_").replace(".", "_")
+        return {"uid": dev_uid, "email": dev_email}
 
     _init_firebase()
     from firebase_admin import auth
