@@ -11,6 +11,16 @@ let authDisabled = false;
 let currentUser = null;
 let devUser = null;
 let editingSampleId = null;
+let pendingFilterId = null;
+
+// Capture ?filter= deep-link param before auth resolves, then clean the URL
+(function () {
+    const id = new URLSearchParams(window.location.search).get('filter');
+    if (id) {
+        pendingFilterId = id;
+        history.replaceState({}, '', '/');
+    }
+})();
 
 // ---- Theme ----
 
@@ -743,6 +753,24 @@ async function deleteFilter() {
     }
 }
 
+async function _resolvePendingFilter() {
+    if (!pendingFilterId) return;
+    const id = pendingFilterId;
+    pendingFilterId = null; // clear before any await to prevent re-entry via loadFilter → loadSavedFilters
+    try {
+        const resp = await apiFetch(`/api/filters/${id}`);
+        if (resp.ok) {
+            await loadFilter(await resp.json());
+        } else if (resp.status === 403) {
+            showToast("You don't have access to this filter", 'error');
+        } else {
+            showToast('Filter not found', 'error');
+        }
+    } catch {
+        showToast('Could not load the linked filter', 'error');
+    }
+}
+
 async function loadSavedFilters() {
     try {
         const response = await apiFetch('/api/filters');
@@ -784,6 +812,8 @@ async function loadSavedFilters() {
 
             filtersList.appendChild(filterElement);
         });
+
+        await _resolvePendingFilter();
     } catch (error) {
         console.error('Error loading filters:', error);
     }

@@ -1,6 +1,6 @@
 import os
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timedelta
@@ -522,22 +522,38 @@ async def delete_all_samples(filter_id: str, user=Depends(verify_firebase_token)
 
 # ---- Webhook endpoint ----
 
-@app.post("/webhook/{filter_value:path}", status_code=201)
-async def webhook_receive(filter_value: str, request: Request, background_tasks: BackgroundTasks):
+def _lookup_filter_by_value(filter_value: str):
+    """Returns (filter_ref, filter_snap) or (None, None) if not found."""
     db = get_firestore()
-
-    # Look up by value index first
     val_doc = db.collection("filter_values").document(filter_value).get()
     if val_doc.exists:
         filter_id = val_doc.to_dict()["filter_id"]
         filter_ref = db.collection("filters").document(filter_id)
-        filter_snap = filter_ref.get()
-    else:
-        # Fall back to direct doc ID lookup
-        filter_ref = db.collection("filters").document(filter_value)
-        filter_snap = filter_ref.get()
+        return filter_ref, filter_ref.get()
+    filter_ref = db.collection("filters").document(filter_value)
+    filter_snap = filter_ref.get()
+    if filter_snap.exists:
+        return filter_ref, filter_snap
+    return None, None
 
-    if not filter_snap.exists:
+
+@app.get("/webhook/{filter_value:path}")
+async def webhook_browser_redirect(filter_value: str, request: Request):
+    filter_ref, filter_snap = _lookup_filter_by_value(filter_value)
+    if not filter_snap or not filter_snap.exists:
+        return templates.TemplateResponse(
+            "webhook_not_found.html",
+            {"request": request, "filter_value": filter_value},
+            status_code=404,
+        )
+    return RedirectResponse(url=f"/?filter={filter_ref.id}", status_code=302)
+
+
+@app.post("/webhook/{filter_value:path}", status_code=201)
+async def webhook_receive(filter_value: str, request: Request, background_tasks: BackgroundTasks):
+    filter_ref, filter_snap = _lookup_filter_by_value(filter_value)
+
+    if not filter_snap or not filter_snap.exists:
         raise HTTPException(status_code=404, detail="Filter not found")
 
     filter_data = filter_snap.to_dict()
