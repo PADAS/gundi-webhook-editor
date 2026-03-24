@@ -327,7 +327,7 @@ function renderSamples() {
             ? `Error: ${escapeHtml(s.error)}`
             : (s.result !== undefined ? escapeHtml(JSON.stringify(s.result, null, 2)) : '');
         const labelHtml = s.label ? `<span class="sample-label">${escapeHtml(s.label)}</span><br>` : '';
-        const tsHtml = s.received_at ? `<span class="sample-ts">${new Date(s.received_at).toLocaleTimeString()}</span>` : '';
+        const tsHtml = s.received_at ? `<span class="sample-ts">${new Date(s.received_at).toLocaleString()}</span>` : '';
 
         return `<tr data-index="${i}" class="${expandedSampleIds.has(s.id) ? '' : 'collapsed'}">
             <td><span class="row-chevron">&#9654;</span><span class="status-dot ${statusClass}"></span></td>
