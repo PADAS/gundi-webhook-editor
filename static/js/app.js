@@ -10,6 +10,7 @@ let authToken = null;
 let authDisabled = false;
 let currentUser = null;
 let devUser = null;
+let editingSampleId = null;
 
 // ---- Theme ----
 
@@ -338,6 +339,8 @@ function renderSamples() {
                 <pre>${outputText}</pre>
             </td>
             <td>
+                <button class="sample-action-btn sample-copy-btn" data-index="${i}" title="Copy payload">⎘</button>
+                <button class="sample-action-btn sample-edit-btn" data-index="${i}" title="Edit sample">✎</button>
                 <button class="sample-delete-btn" data-sample-id="${s.id}" title="Delete sample">&times;</button>
             </td>
         </tr>`;
@@ -346,7 +349,7 @@ function renderSamples() {
     // Attach row toggle handlers (ignore text selections and delete clicks)
     tbody.querySelectorAll('tr').forEach(tr => {
         tr.addEventListener('click', (e) => {
-            if (e.target.closest('.sample-delete-btn')) return;
+            if (e.target.closest('.sample-delete-btn') || e.target.closest('.sample-action-btn')) return;
             const selection = window.getSelection();
             if (selection && selection.toString().length > 0) return;
             tr.classList.toggle('collapsed');
@@ -365,6 +368,22 @@ function renderSamples() {
     // Attach delete handlers
     tbody.querySelectorAll('.sample-delete-btn').forEach(btn => {
         btn.addEventListener('click', () => deleteSample(btn.dataset.sampleId));
+    });
+
+    // Attach copy handlers
+    tbody.querySelectorAll('.sample-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const s = samples[Number(btn.dataset.index)];
+            if (s) copySamplePayload(s.payload);
+        });
+    });
+
+    // Attach edit handlers
+    tbody.querySelectorAll('.sample-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const s = samples[Number(btn.dataset.index)];
+            if (s) openEditSampleModal(s.id, s.payload);
+        });
     });
 }
 
@@ -389,7 +408,17 @@ function openAddSampleModal() {
 }
 
 function closeAddSampleModal() {
+    editingSampleId = null;
+    document.getElementById('sampleModalTitle').textContent = 'Add Sample';
     document.getElementById('addSampleModal').style.display = 'none';
+}
+
+function openEditSampleModal(sampleId, payload) {
+    editingSampleId = sampleId;
+    document.getElementById('sampleModalTitle').textContent = 'Edit Sample';
+    document.getElementById('sampleInput').value = formatJson(payload);
+    document.getElementById('addSampleModal').style.display = 'flex';
+    document.getElementById('sampleInput').focus();
 }
 
 async function addSample() {
@@ -399,13 +428,35 @@ async function addSample() {
         showToast('Please enter JSON data', 'error');
         return;
     }
-    // Validate JSON
     try {
         JSON.parse(input);
     } catch {
         showToast('Invalid JSON', 'error');
         return;
     }
+
+    if (editingSampleId) {
+        try {
+            const response = await apiFetch(`/api/filters/${currentFilter.id}/samples/${editingSampleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payload: input }),
+            });
+            if (response.ok) {
+                closeAddSampleModal();
+                await loadSamples();
+                testAllSamples();
+                showToast('Sample updated', 'success');
+            } else {
+                const err = await response.json();
+                showToast(`Error: ${err.detail}`, 'error');
+            }
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        }
+        return;
+    }
+
     try {
         const response = await apiFetch(`/api/filters/${currentFilter.id}/samples`, {
             method: 'POST',
@@ -426,6 +477,12 @@ async function addSample() {
     } catch (error) {
         showToast(`Error: ${error.message}`, 'error');
     }
+}
+
+function copySamplePayload(payload) {
+    navigator.clipboard.writeText(formatJson(payload)).then(() => {
+        showToast('Payload copied', 'success');
+    });
 }
 
 async function deleteSample(sampleId) {

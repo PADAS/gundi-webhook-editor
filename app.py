@@ -480,6 +480,27 @@ async def create_sample(filter_id: str, sample: SampleCreate, user=Depends(verif
         received_at=now,
     )
 
+@app.put("/api/filters/{filter_id}/samples/{sample_id}", response_model=SampleOut)
+async def update_sample(filter_id: str, sample_id: str, sample: SampleCreate, user=Depends(verify_firebase_token)):
+    db = get_firestore()
+    sample_ref = db.collection("filters").document(filter_id).collection("samples").document(sample_id)
+    snap = sample_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Sample not found")
+    try:
+        json.loads(sample.payload)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    existing = snap.to_dict()
+    sample_ref.update({"payload": sample.payload})
+    return SampleOut(
+        id=sample_id,
+        filter_id=filter_id,
+        payload=sample.payload,
+        label=existing.get("label"),
+        received_at=existing["received_at"],
+    )
+
 @app.delete("/api/filters/{filter_id}/samples/{sample_id}", status_code=204)
 async def delete_sample(filter_id: str, sample_id: str, user=Depends(verify_firebase_token)):
     db = get_firestore()

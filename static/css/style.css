@@ -1327,6 +1327,25 @@ tr:hover .sample-delete-btn {
     }
 }
 
+/* ---- Sample row action buttons (copy, edit) ---- */
+
+.sample-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+    line-height: 1;
+}
+
+.sample-action-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
 /* ---- Filter config row ---- */
 
 .field-row {
