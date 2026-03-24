@@ -586,6 +586,9 @@ async function saveFilter() {
             await loadSamples();
             testAllSamples();
             startSamplePolling();
+            if (data.max_samples < samples.length) {
+                showToast(`Trimming to ${data.max_samples} samples\u2026`, 'info');
+            }
             showToast('Filter saved', 'success');
         } else {
             const error = await response.json();

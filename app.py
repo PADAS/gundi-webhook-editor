@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -72,6 +72,22 @@ def delete_subcollection(parent_ref, subcollection_name, batch_size=100):
         for doc in docs:
             batch.delete(doc.reference)
         batch.commit()
+
+
+def _trim_samples_to_limit(filter_ref, max_samples: int):
+    from google.cloud import firestore as _firestore
+    samples_ref = filter_ref.collection("samples")
+    count_result = samples_ref.count().get()
+    total = count_result[0][0].value
+    if total > max_samples:
+        oldest = (
+            samples_ref
+            .order_by("received_at", direction=_firestore.Query.ASCENDING)
+            .limit(total - max_samples)
+            .stream()
+        )
+        for doc in oldest:
+            doc.reference.delete()
 
 
 # Pydantic Models
@@ -268,7 +284,7 @@ async def get_filter(filter_id: str, user=Depends(verify_firebase_token)):
     )
 
 @app.put("/api/filters/{filter_id}", response_model=Filter)
-async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verify_firebase_token)):
+async def update_filter(filter_id: str, filter: FilterCreate, background_tasks: BackgroundTasks, user=Depends(verify_firebase_token)):
     try:
         jq.compile(filter.filter_expression)
     except Exception as e:
@@ -313,6 +329,8 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
         return old_data["created_at"], old_data.get("owner_uid"), old_data.get("shared_with", [])
 
     created_at, owner_uid, shared_with = txn_update()
+    filter_ref = db.collection("filters").document(filter_id)
+    background_tasks.add_task(_trim_samples_to_limit, filter_ref, filter.max_samples)
     return Filter(
         id=filter_id,
         name=filter.name,
@@ -484,7 +502,7 @@ async def delete_all_samples(filter_id: str, user=Depends(verify_firebase_token)
 # ---- Webhook endpoint ----
 
 @app.post("/webhook/{filter_value:path}", status_code=201)
-async def webhook_receive(filter_value: str, request: Request):
+async def webhook_receive(filter_value: str, request: Request, background_tasks: BackgroundTasks):
     db = get_firestore()
 
     # Look up by value index first
@@ -521,20 +539,8 @@ async def webhook_receive(filter_value: str, request: Request):
         "received_at": now,
     })
 
-    # Trim oldest samples if over max_samples
-    from google.cloud import firestore as _firestore
     max_samples = filter_data.get("max_samples", 100)
-    count_result = samples_ref.count().get()
-    total = count_result[0][0].value
-    if total > max_samples:
-        oldest = (
-            samples_ref
-            .order_by("received_at", direction=_firestore.Query.ASCENDING)
-            .limit(total - max_samples)
-            .stream()
-        )
-        for doc in oldest:
-            doc.reference.delete()
+    background_tasks.add_task(_trim_samples_to_limit, filter_ref, max_samples)
 
     return {"id": sample_ref.id, "status": "received"}
 
