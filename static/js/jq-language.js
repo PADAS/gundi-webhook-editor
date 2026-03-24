@@ -207,7 +207,42 @@ window.registerJqLanguage = function () {
     ];
 
     // Document formatter
-    function formatJq(text) {
+    function breakLongLine(line, maxWidth) {
+        if (line.length <= maxWidth) return line;
+
+        let depth = 0;
+        let inString = false;
+        let escaped = false;
+        const breakPoints = [];
+
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (escaped) { escaped = false; continue; }
+            if (ch === '\\' && inString) { escaped = true; continue; }
+            if (ch === '"') { inString = !inString; continue; }
+            if (inString) continue;
+            if ('([{'.includes(ch)) { depth++; continue; }
+            if (')]}'.includes(ch)) { depth--; continue; }
+            if (ch === ',' && depth === 1) breakPoints.push(i);
+        }
+
+        if (breakPoints.length === 0) return line;
+
+        const baseIndent = line.match(/^(\s*)/)[1];
+        const innerIndent = baseIndent + '  ';
+
+        let result = '';
+        let last = 0;
+        for (const bp of breakPoints) {
+            result += line.slice(last, bp + 1).trimEnd() + '\n' + innerIndent;
+            last = bp + 1;
+            while (last < line.length && line[last] === ' ') last++;
+        }
+        result += line.slice(last);
+        return result;
+    }
+
+    function formatJq(text, maxWidth = 80) {
         text = text.trim();
         let result = '';
         let depth = 0;
@@ -242,10 +277,13 @@ window.registerJqLanguage = function () {
             result += ch;
         }
 
-        return result
+        const lines = result
             .split('\n')
             .map(line => line.trim().replace(/\s{2,}/g, ' '))
-            .filter((line, idx) => line || idx === 0)
+            .filter((line, idx) => line || idx === 0);
+
+        return lines
+            .map(line => breakLongLine(line, maxWidth))
             .join('\n');
     }
 

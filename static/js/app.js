@@ -64,6 +64,7 @@ require(['vs/editor/editor.main'], function () {
 
     setupEventListeners();
     initAuth();
+    initResizeHandle();
     if (typeof initHelpDrawer === 'function') {
         initHelpDrawer();
     }
@@ -72,6 +73,65 @@ require(['vs/editor/editor.main'], function () {
         filterEditor.layout();
     });
 });
+
+// ---- Word Wrap Toggle ----
+
+function initWrapToggle() {
+    const btn = document.getElementById('wrapBtn');
+    const saved = localStorage.getItem('editorWordWrap') === 'true';
+    applyWordWrap(saved);
+
+    btn.addEventListener('click', () => {
+        const next = filterEditor.getOption(monaco.editor.EditorOption.wordWrap) !== 'on';
+        applyWordWrap(next);
+        localStorage.setItem('editorWordWrap', next);
+    });
+}
+
+function applyWordWrap(on) {
+    filterEditor.updateOptions({ wordWrap: on ? 'on' : 'off' });
+    const btn = document.getElementById('wrapBtn');
+    btn.classList.toggle('active', on);
+}
+
+// ---- Resize Handle ----
+
+function initResizeHandle() {
+    const handle = document.getElementById('editorResizeHandle');
+    const container = handle.parentElement;
+    const MIN_PX = 200;
+
+    const saved = localStorage.getItem('editorSplit');
+    if (saved) {
+        container.style.gridTemplateColumns = saved;
+    }
+
+    handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handle.classList.add('dragging');
+        const startX = e.clientX;
+        const startLeftPx = parseFloat(getComputedStyle(container).gridTemplateColumns.split(' ')[0]);
+
+        function onMove(e) {
+            const delta = e.clientX - startX;
+            const totalW = container.offsetWidth - 6;
+            const newLeft = Math.max(MIN_PX, Math.min(totalW - MIN_PX, startLeftPx + delta));
+            const newRight = totalW - newLeft;
+            const cols = `${newLeft}px 6px ${newRight}px`;
+            container.style.gridTemplateColumns = cols;
+            localStorage.setItem('editorSplit', cols);
+        }
+
+        function onUp() {
+            handle.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
 
 // ---- Auth ----
 
@@ -207,6 +267,7 @@ function setupEventListeners() {
     document.getElementById('formatBtn').addEventListener('click', () => {
         filterEditor.trigger('button', 'editor.action.formatDocument', {});
     });
+    initWrapToggle();
     document.getElementById('filterEnabled').addEventListener('click', () => {
         const cur = document.getElementById('filterEnabled').dataset.enabled === 'true';
         setEnabledToggle(!cur);

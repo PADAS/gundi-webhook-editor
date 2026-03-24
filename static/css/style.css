@@ -209,7 +209,9 @@ kbd {
 .main-content {
     display: grid;
     grid-template-columns: 260px 1fr;
+    grid-template-rows: 1fr;
     flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -395,6 +397,11 @@ kbd {
     background: var(--bg-hover);
     color: var(--text-primary);
 }
+.btn.ghost.active {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
 
 /* ---- Editor Panel ---- */
 
@@ -419,6 +426,10 @@ kbd {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+}
+
+.filter-details .field-row {
+    grid-column: 1 / -1;
 }
 
 .filter-details label {
@@ -454,9 +465,23 @@ kbd {
 
 .editor-main {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 1fr 6px 2fr;
     flex: 1;
     min-height: 0;
+}
+
+.resize-handle {
+    width: 6px;
+    cursor: col-resize;
+    background: var(--border);
+    transition: background var(--transition-fast);
+    position: relative;
+    z-index: 1;
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+    background: var(--accent);
 }
 
 .filter-editor-column {
