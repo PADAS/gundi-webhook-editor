@@ -203,6 +203,10 @@ function setupEventListeners() {
     document.getElementById('copyWebhookBtn').addEventListener('click', copyWebhookUrl);
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('shareBtn').addEventListener('click', shareEmail);
+    document.getElementById('filterEnabled').addEventListener('click', () => {
+        const cur = document.getElementById('filterEnabled').dataset.enabled === 'true';
+        setEnabledToggle(!cur);
+    });
     document.querySelector('.modal-backdrop').addEventListener('click', closeAddSampleModal);
 
     // Auto-test on filter change (debounced)
@@ -303,22 +307,32 @@ function renderSamples() {
         tbody.innerHTML = '';
         empty.style.display = 'flex';
         clearBtn.style.display = 'none';
+        document.getElementById('sampleCount').style.display = 'none';
         return;
     }
 
     empty.style.display = 'none';
     clearBtn.style.display = currentFilter ? 'inline-flex' : 'none';
+
+    // Update count badge
+    const maxSamples = parseInt(document.getElementById('maxSamples').value) || 100;
+    const badge = document.getElementById('sampleCount');
+    badge.textContent = `${samples.length} / ${maxSamples}`;
+    badge.style.display = 'inline';
+    badge.classList.toggle('at-limit', samples.length >= maxSamples);
+
     tbody.innerHTML = samples.map((s, i) => {
         const statusClass = s.error ? 'error' : (s.result !== undefined ? 'success' : 'pending');
         const outputText = s.error
             ? `Error: ${escapeHtml(s.error)}`
             : (s.result !== undefined ? escapeHtml(JSON.stringify(s.result, null, 2)) : '');
         const labelHtml = s.label ? `<span class="sample-label">${escapeHtml(s.label)}</span><br>` : '';
+        const tsHtml = s.received_at ? `<span class="sample-ts">${new Date(s.received_at).toLocaleTimeString()}</span>` : '';
 
         return `<tr data-index="${i}" class="${expandedSampleIds.has(s.id) ? '' : 'collapsed'}">
             <td><span class="row-chevron">&#9654;</span><span class="status-dot ${statusClass}"></span></td>
             <td class="sample-cell">
-                ${labelHtml}<pre>${escapeHtml(formatJson(s.payload))}</pre>
+                ${labelHtml}<pre>${escapeHtml(formatJson(s.payload))}</pre>${tsHtml}
             </td>
             <td class="sample-cell ${statusClass}">
                 <pre>${outputText}</pre>
@@ -455,6 +469,7 @@ async function loadSamples() {
             id: s.id,
             payload: s.payload,
             label: s.label,
+            received_at: s.received_at,
             result: undefined,
             error: null
         }));
@@ -554,7 +569,10 @@ async function saveFilter() {
                 name,
                 description,
                 filter_expression: filterExpression,
-                value: filterValue
+                value: filterValue,
+                max_samples: parseInt(document.getElementById('maxSamples').value) || 100,
+                retention_days: parseInt(document.getElementById('retentionDays').value) || null,
+                enabled: document.getElementById('filterEnabled').dataset.enabled === 'true',
             })
         });
 
@@ -618,9 +636,10 @@ async function loadSavedFilters() {
             } else {
                 isShared = filter.owner_uid && currentUser && filter.owner_uid !== currentUser.uid;
             }
+            const isPaused = filter.enabled === false;
             filterElement.innerHTML = `
                 <div class="filter-item-content">
-                    <div class="filter-item-name">${escapeHtml(filter.name)}${isShared ? '<span class="filter-shared-badge">shared</span>' : ''}</div>
+                    <div class="filter-item-name">${escapeHtml(filter.name)}${isShared ? '<span class="filter-shared-badge">shared</span>' : ''}${isPaused ? '<span class="filter-disabled-badge">paused</span>' : ''}</div>
                     <div class="filter-item-desc">${escapeHtml(filter.description || '')}</div>
                 </div>
                 <button class="filter-item-delete" title="Delete filter">&times;</button>
@@ -664,6 +683,9 @@ async function loadFilter(filter) {
     document.getElementById('filterName').value = filter.name;
     document.getElementById('filterValue').value = filter.value;
     document.getElementById('filterDescription').value = filter.description || '';
+    document.getElementById('maxSamples').value = filter.max_samples ?? 100;
+    document.getElementById('retentionDays').value = filter.retention_days ?? '';
+    setEnabledToggle(filter.enabled ?? true);
     filterEditor.setValue(filter.filter_expression);
     updateDeleteButton();
     updateWebhookUrl();
@@ -680,6 +702,9 @@ function newFilter() {
     document.getElementById('filterName').value = '';
     document.getElementById('filterValue').value = '';
     document.getElementById('filterDescription').value = '';
+    document.getElementById('maxSamples').value = 100;
+    document.getElementById('retentionDays').value = '';
+    setEnabledToggle(true);
     filterEditor.setValue('.');
     samples = [];
     expandedSampleIds.clear();
@@ -694,6 +719,15 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ---- Enabled Toggle ----
+
+function setEnabledToggle(enabled) {
+    const btn = document.getElementById('filterEnabled');
+    btn.dataset.enabled = enabled;
+    btn.textContent = enabled ? '● On' : '○ Off';
+    btn.classList.toggle('active', enabled);
 }
 
 // ---- Ownership & Share Panel ----

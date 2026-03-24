@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 import json
 # Import jq with a try-except to handle the linter error
@@ -80,6 +80,9 @@ class FilterBase(BaseModel):
     description: Optional[str] = None
     value: str
     filter_expression: str
+    max_samples: int = 100
+    retention_days: Optional[int] = None
+    enabled: bool = True
 
 class FilterCreate(FilterBase):
     pass
@@ -183,6 +186,9 @@ async def get_filters(user=Depends(verify_firebase_token)):
             updated_at=data["updated_at"],
             owner_uid=data.get("owner_uid"),
             shared_with=data.get("shared_with", []),
+            max_samples=data.get("max_samples", 100),
+            retention_days=data.get("retention_days"),
+            enabled=data.get("enabled", True),
         ))
     return results
 
@@ -214,6 +220,9 @@ async def create_filter(filter: FilterCreate, user=Depends(verify_firebase_token
             "updated_at": now,
             "owner_uid": user["uid"],
             "shared_with": [],
+            "max_samples": filter.max_samples,
+            "retention_days": filter.retention_days,
+            "enabled": filter.enabled,
         })
         transaction.set(val_ref, {"filter_id": filter_ref.id})
         return filter_ref.id
@@ -229,6 +238,9 @@ async def create_filter(filter: FilterCreate, user=Depends(verify_firebase_token
         updated_at=now,
         owner_uid=user["uid"],
         shared_with=[],
+        max_samples=filter.max_samples,
+        retention_days=filter.retention_days,
+        enabled=filter.enabled,
     )
 
 @app.get("/api/filters/{filter_id}", response_model=Filter)
@@ -250,6 +262,9 @@ async def get_filter(filter_id: str, user=Depends(verify_firebase_token)):
         updated_at=data["updated_at"],
         owner_uid=data.get("owner_uid"),
         shared_with=data.get("shared_with", []),
+        max_samples=data.get("max_samples", 100),
+        retention_days=data.get("retention_days"),
+        enabled=data.get("enabled", True),
     )
 
 @app.put("/api/filters/{filter_id}", response_model=Filter)
@@ -291,6 +306,9 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
             "description": filter.description,
             "filter_expression": filter.filter_expression,
             "updated_at": now,
+            "max_samples": filter.max_samples,
+            "retention_days": filter.retention_days,
+            "enabled": filter.enabled,
         })
         return old_data["created_at"], old_data.get("owner_uid"), old_data.get("shared_with", [])
 
@@ -305,6 +323,9 @@ async def update_filter(filter_id: str, filter: FilterCreate, user=Depends(verif
         updated_at=now,
         owner_uid=owner_uid,
         shared_with=shared_with,
+        max_samples=filter.max_samples,
+        retention_days=filter.retention_days,
+        enabled=filter.enabled,
     )
 
 @app.delete("/api/filters/{filter_id}", status_code=204)
@@ -394,10 +415,17 @@ async def test_filter_bulk(filter_test: BulkFilterTest, user=Depends(verify_fire
 async def get_samples(filter_id: str, user=Depends(verify_firebase_token)):
     db = get_firestore()
     filter_ref = db.collection("filters").document(filter_id)
-    if not filter_ref.get().exists:
+    filter_snap = filter_ref.get()
+    if not filter_snap.exists:
         raise HTTPException(status_code=404, detail="Filter not found")
+    filter_data = filter_snap.to_dict()
     from google.cloud import firestore as _firestore
-    docs = filter_ref.collection("samples").order_by("received_at", direction=_firestore.Query.DESCENDING).stream()
+    query = filter_ref.collection("samples").order_by("received_at", direction=_firestore.Query.DESCENDING)
+    retention_days = filter_data.get("retention_days")
+    if retention_days:
+        cutoff = datetime.utcnow() - timedelta(days=retention_days)
+        query = query.where("received_at", ">=", cutoff)
+    docs = query.stream()
     return [
         SampleOut(
             id=doc.id,
@@ -473,6 +501,10 @@ async def webhook_receive(filter_value: str, request: Request):
     if not filter_snap.exists:
         raise HTTPException(status_code=404, detail="Filter not found")
 
+    filter_data = filter_snap.to_dict()
+    if not filter_data.get("enabled", True):
+        return {"status": "disabled"}
+
     try:
         body = await request.body()
         payload = body.decode("utf-8")
@@ -481,12 +513,29 @@ async def webhook_receive(filter_value: str, request: Request):
         raise HTTPException(status_code=400, detail="Request body must be valid JSON")
 
     now = datetime.utcnow()
-    sample_ref = filter_ref.collection("samples").document()
+    samples_ref = filter_ref.collection("samples")
+    sample_ref = samples_ref.document()
     sample_ref.set({
         "payload": payload,
         "label": "webhook",
         "received_at": now,
     })
+
+    # Trim oldest samples if over max_samples
+    from google.cloud import firestore as _firestore
+    max_samples = filter_data.get("max_samples", 100)
+    count_result = samples_ref.count().get()
+    total = count_result[0][0].value
+    if total > max_samples:
+        oldest = (
+            samples_ref
+            .order_by("received_at", direction=_firestore.Query.ASCENDING)
+            .limit(total - max_samples)
+            .stream()
+        )
+        for doc in oldest:
+            doc.reference.delete()
+
     return {"id": sample_ref.id, "status": "received"}
 
 
