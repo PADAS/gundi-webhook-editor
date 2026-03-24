@@ -204,6 +204,9 @@ function setupEventListeners() {
     document.getElementById('copyWebhookBtn').addEventListener('click', copyWebhookUrl);
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('shareBtn').addEventListener('click', shareEmail);
+    document.getElementById('formatBtn').addEventListener('click', () => {
+        filterEditor.trigger('button', 'editor.action.formatDocument', {});
+    });
     document.getElementById('filterEnabled').addEventListener('click', () => {
         const cur = document.getElementById('filterEnabled').dataset.enabled === 'true';
         setEnabledToggle(!cur);
@@ -234,6 +237,9 @@ function setupEventListeners() {
         } else if (mod && e.key === 's') {
             e.preventDefault();
             saveFilter();
+        } else if (mod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+            e.preventDefault();
+            filterEditor.trigger('keyboard', 'editor.action.formatDocument', {});
         } else if (e.key === 'Escape') {
             closeAddSampleModal();
         }

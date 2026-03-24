@@ -206,6 +206,59 @@ window.registerJqLanguage = function () {
         { label: '@uri', detail: 'URI-escape string', insertText: '@uri' },
     ];
 
+    // Document formatter
+    function formatJq(text) {
+        text = text.trim();
+        let result = '';
+        let depth = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+
+            if (escaped) { result += ch; escaped = false; continue; }
+            if (ch === '\\' && inString) { result += ch; escaped = true; continue; }
+            if (ch === '"') { inString = !inString; result += ch; continue; }
+            if (inString) { result += ch; continue; }
+
+            if ('([{'.includes(ch)) { depth++; result += ch; continue; }
+            if (')]}'.includes(ch)) { depth--; result += ch; continue; }
+
+            if (ch === '|' && depth === 0) {
+                const tail = result.trimEnd();
+                // Don't split // or ?// alternative operators
+                if (tail.endsWith('/') || tail.endsWith('?')) {
+                    result += ch;
+                } else if (text[i + 1] === '/') {
+                    // Next char is '/', so this is start of //
+                    result += ch;
+                } else {
+                    result = tail + '\n| ';
+                }
+                continue;
+            }
+
+            result += ch;
+        }
+
+        return result
+            .split('\n')
+            .map(line => line.trim().replace(/\s{2,}/g, ' '))
+            .filter((line, idx) => line || idx === 0)
+            .join('\n');
+    }
+
+    monaco.languages.registerDocumentFormattingEditProvider('jq', {
+        provideDocumentFormattingEdits(model) {
+            const formatted = formatJq(model.getValue());
+            return [{
+                range: model.getFullModelRange(),
+                text: formatted,
+            }];
+        }
+    });
+
     monaco.languages.registerCompletionItemProvider('jq', {
         provideCompletionItems: function (model, position) {
             const word = model.getWordUntilPosition(position);
