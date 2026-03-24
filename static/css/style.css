@@ -415,9 +415,10 @@ kbd {
 
 .filter-details {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr auto;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
+    align-items: end;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
 }
@@ -428,9 +429,6 @@ kbd {
     gap: 0.25rem;
 }
 
-.filter-details .field-row {
-    grid-column: 1 / -1;
-}
 
 .filter-details label {
     font-size: 0.65rem;
@@ -537,6 +535,20 @@ kbd {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+.samples-config {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.input-field-xs {
+    width: 4rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
 }
 
 .webhook-url {
@@ -1369,18 +1381,6 @@ tr:hover .sample-delete-btn {
 .sample-action-btn:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
-}
-
-/* ---- Filter config row ---- */
-
-.field-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-}
-
-.field-group-sm {
-    flex: 1;
 }
 
 .field-group-toggle {

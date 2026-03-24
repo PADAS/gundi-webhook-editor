@@ -68,19 +68,9 @@
                         <label for="filterDescription">Description</label>
                         <input type="text" id="filterDescription" placeholder="What does this filter do?" class="input-field">
                     </div>
-                    <div class="field-row">
-                        <div class="field-group field-group-sm">
-                            <label for="maxSamples">Max samples</label>
-                            <input type="number" id="maxSamples" class="input-field" min="1" max="1000" value="100">
-                        </div>
-                        <div class="field-group field-group-sm">
-                            <label for="retentionDays">Retention (days)</label>
-                            <input type="number" id="retentionDays" class="input-field" min="1" placeholder="∞">
-                        </div>
-                        <div class="field-group field-group-toggle">
-                            <label>Enabled</label>
-                            <button id="filterEnabled" class="toggle-btn active" data-enabled="true">● On</button>
-                        </div>
+                    <div class="field-group field-group-toggle">
+                        <label>Enabled</label>
+                        <button id="filterEnabled" class="toggle-btn active" data-enabled="true">● On</button>
                     </div>
                 </div>
 
@@ -111,6 +101,12 @@
                         <div class="samples-header">
                             <span class="section-label"><span class="dot green"></span> Samples <span id="sampleCount" class="sample-count-badge" style="display:none;"></span></span>
                             <div class="samples-actions">
+                                <div class="samples-config">
+                                    <label for="maxSamples">Max</label>
+                                    <input type="number" id="maxSamples" class="input-field input-field-xs" min="1" max="1000" value="100">
+                                    <label for="retentionDays">Keep (days)</label>
+                                    <input type="number" id="retentionDays" class="input-field input-field-xs" min="1" placeholder="∞">
+                                </div>
                                 <div id="webhookUrl" class="webhook-url" style="display:none;">
                                     <kbd id="webhookUrlText"></kbd>
                                     <button id="copyWebhookBtn" class="btn ghost" title="Copy webhook URL">Copy</button>
