@@ -8,7 +8,7 @@ A web app for creating, editing, and testing jq filters against JSON documents. 
 - Real-time filter testing against JSON input
 - Save and manage multiple named filters
 - Firebase Authentication with email allowlisting
-- Firestore persistence (SQLite for local dev)
+- Firestore persistence
 
 ## Local Development
 
@@ -37,10 +37,10 @@ GCP infrastructure is managed with [OpenTofu](https://opentofu.org/) in the `inf
 
 ## Tech Stack
 
-- **Backend:** FastAPI, SQLAlchemy, jq (Python bindings)
+- **Backend:** FastAPI, jq (Python bindings)
 - **Frontend:** Vanilla JS, Monaco Editor
 - **Auth:** Firebase Authentication
-- **Database:** Firestore (production), SQLite (local)
+- **Database:** Firestore
 - **Infra:** GCP Cloud Run, Artifact Registry, Workload Identity Federation
 - **IaC:** OpenTofu
 - **CI/CD:** GitHub Actions

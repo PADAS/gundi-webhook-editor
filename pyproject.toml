@@ -7,7 +7,6 @@ dependencies = [
     "fastapi==0.104.1",
     "fastapi-sessions",
     "uvicorn==0.24.0",
-    "sqlalchemy==2.0.23",
     "pydantic==2.5.2",
     "python-dotenv==1.0.1",
     "jq==1.6.0",

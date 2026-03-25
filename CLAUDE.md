@@ -22,7 +22,7 @@ No test suite exists in this project.
 
 ## Architecture
 
-**Single-file backend** (`app.py`): FastAPI app with SQLAlchemy ORM and SQLite (`filters.db`). Defines one model (`JQFilter`) with Pydantic schemas for validation. The `jq` Python library compiles and executes filter expressions.
+**Single-file backend** (`app.py`): FastAPI app with Firestore (via `google-cloud-firestore`) and Pydantic schemas for validation. The `jq` Python library compiles and executes filter expressions.
 
 **API endpoints:**
 - `GET/POST /api/filters` — list and create filters
@@ -34,5 +34,4 @@ No test suite exists in this project.
 ## Key Details
 
 - The `jq` pip package requires the system `jq` library (`libjq`) to be installed
-- SQLite database file (`filters.db`) is created in the project root at startup
-- The `JQFilter.value` field is auto-lowercased with spaces replaced by underscores (via SQLAlchemy `@validates`)
+- The `filter.value` field is normalized to lowercase with spaces replaced by underscores on save
