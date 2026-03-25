@@ -79,9 +79,7 @@ require(['vs/editor/editor.main'], function () {
         initHelpDrawer();
     }
 
-    window.addEventListener('resize', () => {
-        filterEditor.layout();
-    });
+    window.addEventListener('resize', () => filterEditor.layout());
 });
 
 // ---- Word Wrap Toggle ----
@@ -111,10 +109,22 @@ function initResizeHandle() {
     const container = handle.parentElement;
     const MIN_PX = 200;
 
-    const saved = localStorage.getItem('editorSplit');
-    if (saved) {
-        container.style.gridTemplateColumns = saved;
+    // Store/restore ratio (0–1) so columns scale with window resizes
+    function applyRatio(ratio) {
+        const totalW = container.offsetWidth - 6;
+        const leftPx = Math.max(MIN_PX, Math.min(totalW - MIN_PX, Math.round(ratio * totalW)));
+        container.style.gridTemplateColumns = `${leftPx}px 6px ${totalW - leftPx}px`;
     }
+
+    const savedRatio = parseFloat(localStorage.getItem('editorSplitRatio'));
+    if (!isNaN(savedRatio)) {
+        applyRatio(savedRatio);
+    }
+
+    window.addEventListener('resize', () => {
+        const ratio = parseFloat(localStorage.getItem('editorSplitRatio'));
+        if (!isNaN(ratio)) applyRatio(ratio);
+    });
 
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -126,10 +136,9 @@ function initResizeHandle() {
             const delta = e.clientX - startX;
             const totalW = container.offsetWidth - 6;
             const newLeft = Math.max(MIN_PX, Math.min(totalW - MIN_PX, startLeftPx + delta));
-            const newRight = totalW - newLeft;
-            const cols = `${newLeft}px 6px ${newRight}px`;
-            container.style.gridTemplateColumns = cols;
-            localStorage.setItem('editorSplit', cols);
+            const ratio = newLeft / totalW;
+            container.style.gridTemplateColumns = `${newLeft}px 6px ${totalW - newLeft}px`;
+            localStorage.setItem('editorSplitRatio', ratio);
         }
 
         function onUp() {
