@@ -160,6 +160,14 @@ async function initAuth() {
         const config = await resp.json();
         authDisabled = config.authDisabled;
 
+        if (config.appVersion) {
+            const badge = document.getElementById('versionBadge');
+            badge.textContent = `v${config.appVersion}`;
+            const sha = config.buildSha !== 'local' ? config.buildSha.slice(0, 7) : 'local';
+            badge.title = `${config.appVersion} · ${sha} · ${config.buildTime}`;
+            badge.style.display = '';
+        }
+
         if (authDisabled) {
             document.getElementById('loginBtn').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'none';

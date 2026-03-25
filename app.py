@@ -33,6 +33,10 @@ def _get_vertex_client() -> Optional[AnthropicVertex]:
     return _vertex_client
 
 # Create FastAPI app
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
+BUILD_SHA = os.environ.get("BUILD_SHA", "local")
+BUILD_TIME = os.environ.get("BUILD_TIME", "unknown")
+
 app = FastAPI(title="Gundi Webhook Editor")
 
 # Mount static files
@@ -177,6 +181,9 @@ async def get_config():
         "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
         "projectId": os.environ.get("FIREBASE_PROJECT_ID", ""),
         "authDisabled": os.environ.get("AUTH_DISABLED", "").lower() == "true",
+        "appVersion": APP_VERSION,
+        "buildSha": BUILD_SHA,
+        "buildTime": BUILD_TIME,
     }
     emulator_url = os.environ.get("FIREBASE_AUTH_EMULATOR_URL", "")
     if emulator_url:
