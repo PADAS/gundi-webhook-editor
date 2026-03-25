@@ -36,6 +36,7 @@ def _get_vertex_client() -> Optional[AnthropicVertex]:
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 BUILD_SHA = os.environ.get("BUILD_SHA", "local")
 BUILD_TIME = os.environ.get("BUILD_TIME", "unknown")
+GITHUB_REPO_URL = os.environ.get("GITHUB_REPO_URL", "")
 
 app = FastAPI(title="Gundi Webhook Editor")
 
@@ -185,6 +186,8 @@ async def get_config():
         "buildSha": BUILD_SHA,
         "buildTime": BUILD_TIME,
     }
+    if GITHUB_REPO_URL:
+        config["githubRepoUrl"] = GITHUB_REPO_URL
     emulator_url = os.environ.get("FIREBASE_AUTH_EMULATOR_URL", "")
     if emulator_url:
         config["authEmulatorUrl"] = emulator_url

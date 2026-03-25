@@ -160,6 +160,12 @@ async function initAuth() {
         const config = await resp.json();
         authDisabled = config.authDisabled;
 
+        if (config.githubRepoUrl) {
+            const link = document.getElementById('githubLink');
+            link.href = config.githubRepoUrl;
+            link.style.display = '';
+        }
+
         if (config.appVersion) {
             const badge = document.getElementById('versionBadge');
             badge.textContent = `v${config.appVersion}`;
@@ -185,6 +191,11 @@ async function initAuth() {
             firebase.auth().useEmulator(config.authEmulatorUrl);
         }
 
+        document.getElementById('signInModalBtn').addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider);
+        });
+
         firebase.auth().onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
@@ -193,6 +204,7 @@ async function initAuth() {
                 document.getElementById('logoutBtn').style.display = 'inline-flex';
                 document.getElementById('userEmail').style.display = 'inline';
                 document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('signInModal').style.display = 'none';
                 loadSavedFilters();
             } else {
                 currentUser = null;
@@ -200,6 +212,7 @@ async function initAuth() {
                 document.getElementById('loginBtn').style.display = 'inline-flex';
                 document.getElementById('logoutBtn').style.display = 'none';
                 document.getElementById('userEmail').style.display = 'none';
+                document.getElementById('signInModal').style.display = 'flex';
             }
         });
 
