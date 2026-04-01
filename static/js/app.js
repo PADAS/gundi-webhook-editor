@@ -446,6 +446,7 @@ function renderSamples() {
                 <pre>${outputText}</pre>
             </td>
             <td>
+                <button class="sample-action-btn sample-ai-btn" data-index="${i}" title="Ask AI about this sample">✦ AI</button>
                 <button class="sample-action-btn sample-copy-btn" data-index="${i}" title="Copy payload">⎘</button>
                 <button class="sample-action-btn sample-edit-btn" data-index="${i}" title="Edit sample">✎</button>
                 <button class="sample-delete-btn" data-sample-id="${s.id}" title="Delete sample">&times;</button>
@@ -490,6 +491,16 @@ function renderSamples() {
         btn.addEventListener('click', () => {
             const s = samples[Number(btn.dataset.index)];
             if (s) openEditSampleModal(s.id, s.payload);
+        });
+    });
+
+    // Attach AI analysis handlers
+    tbody.querySelectorAll('.sample-ai-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const s = samples[Number(btn.dataset.index)];
+            if (s && typeof window.askAIAboutSample === 'function') {
+                window.askAIAboutSample(s.payload);
+            }
         });
     });
 }

@@ -601,7 +601,9 @@ async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
     system_prompt = (
         "You are a concise jq expert assistant. Help users write and debug jq filter expressions. "
         "When showing jq expressions, use ```jq code blocks. Keep responses short and practical. "
-        "If the user provides their current filter or sample JSON, reference them in your answer."
+        "If the user provides their current filter or sample JSON, reference them in your answer. "
+        "When analyzing a JSON payload, briefly describe its structure and suggest practical jq filters "
+        "to extract the most useful fields."
     )
 
     context_parts = []

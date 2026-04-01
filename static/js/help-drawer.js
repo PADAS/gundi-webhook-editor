@@ -4,6 +4,7 @@
     let initialized = false;
     let activeTab = 'reference';
     let chatHistory = [];
+    let focusedSampleJson = null;
 
     window.initHelpDrawer = function () {
         // Lazy init - DOM created on first toggle
@@ -216,7 +217,7 @@
 
         // Gather context
         const filterExpression = typeof filterEditor !== 'undefined' ? filterEditor.getValue() : '';
-        const firstSample = (typeof samples !== 'undefined' && samples.length > 0) ? samples[0].payload : '';
+        const sampleForContext = focusedSampleJson || (typeof samples !== 'undefined' && samples.length > 0 ? samples[0].payload : '');
 
         // Show loading
         const loadingId = appendChatMessage('assistant', '<span class="chat-loading">Thinking...</span>');
@@ -233,7 +234,7 @@
                 body: JSON.stringify({
                     message,
                     filter_expression: filterExpression || undefined,
-                    sample_json: firstSample || undefined,
+                    sample_json: sampleForContext || undefined,
                     history: chatHistory.slice(-10)
                 })
             });
@@ -317,6 +318,22 @@
 
         return html;
     }
+
+    // ---- "Ask AI about this sample" helper ----
+    window.askAIAboutSample = function (payload) {
+        if (!drawerEl || !drawerEl.classList.contains('open')) {
+            toggleHelpDrawer();
+        }
+        switchTab('assistant');
+        focusedSampleJson = payload;
+
+        // Proactively send analysis request
+        const input = document.getElementById('chatInput');
+        if (input) {
+            input.value = 'Analyze this JSON payload and suggest useful jq filters to extract its key fields.';
+            sendChatMessage();
+        }
+    };
 
     // ---- "Ask AI about this error" helper ----
     window.askAIAboutError = function (errorMsg) {
