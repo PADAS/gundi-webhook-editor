@@ -1,5 +1,8 @@
+import logging
 import os
 from fastapi import HTTPException, Request
+
+logger = logging.getLogger(__name__)
 
 AUTH_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() == "true"
 
@@ -45,7 +48,8 @@ async def verify_firebase_token(request: Request):
     token = authorization[7:]
     try:
         decoded = auth.verify_id_token(token)
-    except Exception:
+    except Exception as e:
+        logger.error("Token verification failed: %s", e)
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     email = decoded.get("email", "")

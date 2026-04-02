@@ -283,11 +283,22 @@ async function apiFetch(url, options = {}) {
     if (authDisabled && devUser) {
         headers['X-Dev-User'] = devUser;
     }
-    const response = await fetch(url, { ...options, headers });
+    let response = await fetch(url, { ...options, headers });
     if (response.status === 401 && !authDisabled) {
-        showToast('Session expired. Please sign in again.', 'error');
-        firebase.auth().signOut();
-        throw new Error('Unauthorized');
+        // Token may be stale — try a forced refresh and retry once
+        const user = firebase.auth().currentUser;
+        if (user) {
+            try {
+                authToken = await user.getIdToken(true);
+                const retryHeaders = { ...headers, 'Authorization': `Bearer ${authToken}` };
+                response = await fetch(url, { ...options, headers: retryHeaders });
+            } catch (_) {}
+        }
+        if (response.status === 401) {
+            showToast('Session expired. Please sign in again.', 'error');
+            firebase.auth().signOut();
+            throw new Error('Unauthorized');
+        }
     }
     return response;
 }
