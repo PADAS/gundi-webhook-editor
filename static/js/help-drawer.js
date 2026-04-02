@@ -182,7 +182,13 @@
 
     function renderAssistantTab() {
         const pane = drawerEl.querySelector('[data-pane="assistant"]');
+        const models = (window.aiModels && window.aiModels.length) ? window.aiModels : ['claude-sonnet-4@20250514'];
+        const modelOptions = models.map(m => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
         pane.innerHTML = `
+            <div class="chat-model-bar">
+                <label for="chatModelSelect" class="chat-model-label">Model</label>
+                <select id="chatModelSelect" class="chat-model-select">${modelOptions}</select>
+            </div>
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-welcome">
                     <div class="chat-welcome-title">jq Assistant</div>
@@ -218,6 +224,7 @@
         // Gather context
         const filterExpression = typeof filterEditor !== 'undefined' ? filterEditor.getValue() : '';
         const sampleForContext = focusedSampleJson || (typeof samples !== 'undefined' && samples.length > 0 ? samples[0].payload : '');
+        const selectedModel = (document.getElementById('chatModelSelect') || {}).value || undefined;
 
         // Show loading
         const loadingId = appendChatMessage('assistant', '<span class="chat-loading">Thinking...</span>');
@@ -235,7 +242,8 @@
                     message,
                     filter_expression: filterExpression || undefined,
                     sample_json: sampleForContext || undefined,
-                    history: chatHistory.slice(-10)
+                    history: chatHistory.slice(-10),
+                    model: selectedModel
                 })
             });
 

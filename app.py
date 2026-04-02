@@ -133,11 +133,18 @@ class BulkFilterTestResponse(BaseModel):
 class ShareRequest(BaseModel):
     email: str
 
+ALLOWED_AI_MODELS = [
+    "claude-sonnet-4@20250514",
+    "claude-opus-4@20250514",
+    "claude-haiku-4-5@20251001",
+]
+
 class AIChatRequest(BaseModel):
     message: str
     filter_expression: Optional[str] = None
     sample_json: Optional[str] = None
     history: Optional[List[dict]] = None
+    model: Optional[str] = None
 
 class AIChatResponse(BaseModel):
     response: Optional[str] = None
@@ -185,6 +192,7 @@ async def get_config():
         "appVersion": APP_VERSION,
         "buildSha": BUILD_SHA,
         "buildTime": BUILD_TIME,
+        "aiModels": ALLOWED_AI_MODELS,
     }
     if GITHUB_REPO_URL:
         config["githubRepoUrl"] = GITHUB_REPO_URL
@@ -625,8 +633,9 @@ async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
     messages.append({"role": "user", "content": user_message})
 
     try:
+        model = req.model if req.model in ALLOWED_AI_MODELS else ALLOWED_AI_MODELS[0]
         response = client.messages.create(
-            model="claude-sonnet-4@20250514",
+            model=model,
             max_tokens=1024,
             system=system_prompt,
             messages=messages,

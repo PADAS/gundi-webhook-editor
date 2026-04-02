@@ -159,6 +159,7 @@ async function initAuth() {
         const resp = await fetch('/api/config');
         const config = await resp.json();
         authDisabled = config.authDisabled;
+        window.aiModels = config.aiModels || [];
 
         if (config.githubRepoUrl) {
             const link = document.getElementById('githubLink');

@@ -1169,6 +1169,32 @@ tr:hover .sample-delete-btn {
 
 /* ---- Assistant / Chat Tab ---- */
 
+.chat-model-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.chat-model-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.chat-model-select {
+    flex: 1;
+    font-size: 0.75rem;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.4rem;
+    cursor: pointer;
+}
+
 .chat-messages {
     flex: 1;
     overflow-y: auto;
