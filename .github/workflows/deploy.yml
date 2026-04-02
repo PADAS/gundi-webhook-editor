@@ -56,4 +56,5 @@ jobs:
             FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}
             FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
             ALLOWED_EMAILS=${{ secrets.ALLOWED_EMAILS }}
+            ALLOWED_AI_MODELS=${{ vars.ALLOWED_AI_MODELS }}
             GITHUB_REPO_URL=${{ github.server_url }}/${{ github.repository }}
