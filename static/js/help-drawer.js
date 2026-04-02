@@ -280,9 +280,13 @@
             btn.addEventListener('click', () => {
                 const code = btn.dataset.code;
                 if (typeof filterEditor !== 'undefined') {
-                    filterEditor.setValue(code);
+                    const model = filterEditor.getModel();
+                    filterEditor.executeEdits('use-filter', [{
+                        range: model.getFullModelRange(),
+                        text: code
+                    }]);
                     filterEditor.focus();
-                    showToast('Filter applied from assistant', 'success');
+                    showToast('Filter applied — press Ctrl+Z / Cmd+Z to undo', 'success');
                 }
             });
         });

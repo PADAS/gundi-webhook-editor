@@ -316,6 +316,10 @@ function setupEventListeners() {
     document.getElementById('copyWebhookBtn').addEventListener('click', copyWebhookUrl);
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('shareBtn').addEventListener('click', shareEmail);
+    document.getElementById('undoBtn').addEventListener('click', () => {
+        filterEditor.trigger('undoBtn', 'undo', null);
+        filterEditor.focus();
+    });
     document.getElementById('formatBtn').addEventListener('click', () => {
         filterEditor.trigger('button', 'editor.action.formatDocument', {});
     });
