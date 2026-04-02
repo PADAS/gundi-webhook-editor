@@ -288,41 +288,50 @@
     }
 
     function renderMarkdown(text) {
-        // Basic markdown rendering
+        // Stash all code blocks BEFORE escaping so data-code and <pre> contents
+        // never get \n→<br> substitution applied to them.
+        const blocks = [];
+
+        text = text.replace(/```jq\n([\s\S]*?)```/g, (_, code) => {
+            const idx = blocks.length;
+            blocks.push({ raw: code.trim(), useFilter: true });
+            return `\x00block${idx}\x00`;
+        });
+
+        text = text.replace(/```(?:\w*)\n?([\s\S]*?)```/g, (_, code) => {
+            const idx = blocks.length;
+            blocks.push({ raw: code.trim(), useFilter: false });
+            return `\x00block${idx}\x00`;
+        });
+
+        // Escape and format the non-code text
         let html = escapeHtml(text);
-
-        // Code blocks with jq language - add "Use this filter" button
-        html = html.replace(/```jq\n([\s\S]*?)```/g, (_, code) => {
-            const trimmed = code.trim();
-            return `<pre class="chat-code"><code>${trimmed}</code></pre><button class="btn ghost chat-use-filter" data-code="${escapeAttr(trimmed)}">Use this filter</button>`;
-        });
-
-        // Generic code blocks
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-            return `<pre class="chat-code"><code>${code.trim()}</code></pre>`;
-        });
-
-        // Remaining ``` blocks without language
-        html = html.replace(/```\n?([\s\S]*?)```/g, (_, code) => {
-            return `<pre class="chat-code"><code>${code.trim()}</code></pre>`;
-        });
-
-        // Inline code
         html = html.replace(/`([^`]+)`/g, '<code class="chat-inline-code">$1</code>');
-
-        // Bold
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-        // Line breaks
         html = html.replace(/\n/g, '<br>');
+
+        // Restore code blocks with their original (unescaped) content
+        html = html.replace(/\x00block(\d+)\x00/g, (_, idx) => {
+            const { raw, useFilter } = blocks[Number(idx)];
+            const display = escapeHtml(raw);
+            if (useFilter) {
+                return `<pre class="chat-code"><code>${display}</code></pre><button class="btn ghost chat-use-filter" data-code="${escapeAttr(raw)}">Use this filter</button>`;
+            }
+            return `<pre class="chat-code"><code>${display}</code></pre>`;
+        });
 
         return html;
     }
 
     // ---- "Ask AI about this sample" helper ----
     window.askAIAboutSample = function (payload) {
-        if (!drawerEl || !drawerEl.classList.contains('open')) {
-            toggleHelpDrawer();
+        if (!drawerEl) {
+            createDrawer();
+            initialized = true;
+        }
+        if (!drawerEl.classList.contains('open')) {
+            drawerEl.classList.add('open');
+            document.getElementById('helpToggle').classList.add('active');
         }
         switchTab('assistant');
         focusedSampleJson = payload;
