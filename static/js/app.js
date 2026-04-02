@@ -507,7 +507,8 @@ function renderSamples() {
 
     // Attach AI analysis handlers
     tbody.querySelectorAll('.sample-ai-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const s = samples[Number(btn.dataset.index)];
             if (s && typeof window.askAIAboutSample === 'function') {
                 window.askAIAboutSample(s.payload);
