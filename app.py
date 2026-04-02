@@ -134,7 +134,7 @@ class ShareRequest(BaseModel):
     email: str
 
 _default_ai_model = "claude-sonnet-4@20250514"
-_ai_models_env = os.environ.get("AI_MODELS", "")
+_ai_models_env = os.environ.get("ALLOWED_AI_MODELS", "")
 ALLOWED_AI_MODELS = (
     [m.strip() for m in _ai_models_env.split(",") if m.strip()]
     if _ai_models_env
