@@ -13,7 +13,7 @@ services:
       - FIRESTORE_EMULATOR_HOST=firebase-emulator:8181
       - GCLOUD_PROJECT=demo-jq-editor
       - AUTH_DISABLED=true
-      - ALLOWED_AI_MODELS=claude-sonnet-4@20250514,claude-opus-4-6@default
+      - ALLOWED_AI_MODELS=claude-sonnet-4@20250514|claude-opus-4-6@default
     depends_on:
       - firebase-emulator
 

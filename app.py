@@ -1,4 +1,5 @@
 import os
+import re
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -136,7 +137,7 @@ class ShareRequest(BaseModel):
 _default_ai_model = "claude-sonnet-4@20250514"
 _ai_models_env = os.environ.get("ALLOWED_AI_MODELS", "")
 ALLOWED_AI_MODELS = (
-    [m.strip() for m in _ai_models_env.split(",") if m.strip()]
+    [m.strip() for m in re.split(r"[,|]", _ai_models_env) if m.strip()]
     if _ai_models_env
     else [_default_ai_model]
 )
