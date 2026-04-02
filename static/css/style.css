@@ -933,7 +933,7 @@ tr:hover .sample-delete-btn {
     position: fixed;
     top: 0;
     right: 0;
-    width: 380px;
+    width: 570px;
     height: 100vh;
     background: var(--bg-surface);
     border-left: 1px solid var(--border);
