@@ -42,6 +42,8 @@ Go to your repo's **Settings → Secrets and variables → Actions**.
 | `CLOUD_RUN_SERVICE` | `gundi-webhook-editor` |
 | `GCP_WIF_PROVIDER` | (from `tofu output wif_provider`) |
 | `GCP_SERVICE_ACCOUNT` | `github-actions-deploy@cdip-dev-78ca.iam.gserviceaccount.com` |
+| `OPENROUTER_BASE_URL` | `https://us.openrouter.ai/api/v1` — our OpenRouter workspace only permits the US data region. If unset, the app uses the global `https://openrouter.ai/api/v1`, which that workspace rejects. |
+| `ALLOWED_AI_MODELS` | Pipe-separated OpenRouter model IDs for the AI chat, e.g. `anthropic/claude-sonnet-5.5\|anthropic/claude-opus-5.5`. The first is the default. |
 
 ### Secrets (Settings → Secrets → Actions)
 
@@ -51,6 +53,7 @@ Go to your repo's **Settings → Secrets and variables → Actions**.
 | `FIREBASE_AUTH_DOMAIN` | `cdip-dev-78ca.firebaseapp.com` |
 | `FIREBASE_PROJECT_ID` | `cdip-dev-78ca` |
 | `ALLOWED_EMAILS` | Comma-separated emails or `@domain.com` |
+| `OPENROUTER_API_KEY` | [OpenRouter](https://openrouter.ai/keys) API key used by the AI chat assistant |
 
 ## 3. Deploy
 
@@ -74,3 +77,7 @@ docker compose up -d --build
 ```
 
 This starts the app with Firebase Auth and Firestore emulators. The app is available at `http://localhost:8080`.
+
+To use the AI chat assistant locally, export `OPENROUTER_API_KEY` before running `docker compose up` (it is passed through to the container).
+
+Locally, `OPENROUTER_BASE_URL` defaults to the US endpoint in `docker-compose.yml`; export it to override.
