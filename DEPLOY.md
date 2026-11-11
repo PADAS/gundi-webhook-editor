@@ -57,7 +57,14 @@ Go to your repo's **Settings → Secrets and variables → Actions**.
 
 ## 3. Deploy
 
-Push to the `main` branch. GitHub Actions will automatically:
+Push a version tag of the form `vX.Y.Z` (pushes to `main` alone do not deploy):
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+GitHub Actions will automatically:
 
 1. Build the Docker image
 2. Push it to Artifact Registry
