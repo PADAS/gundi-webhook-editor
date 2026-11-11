@@ -182,7 +182,7 @@
 
     function renderAssistantTab() {
         const pane = drawerEl.querySelector('[data-pane="assistant"]');
-        const models = (window.aiModels && window.aiModels.length) ? window.aiModels : ['claude-sonnet-4@20250514'];
+        const models = (window.aiModels && window.aiModels.length) ? window.aiModels : ['anthropic/claude-sonnet-5.5'];
         const modelOptions = models.map(m => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
         pane.innerHTML = `
             <div class="chat-model-bar">
@@ -259,7 +259,7 @@
             }
         } catch (err) {
             removeChatMessage(loadingId);
-            appendChatMessage('assistant', '<span class="chat-error">Failed to reach AI assistant. Check Vertex AI configuration.</span>');
+            appendChatMessage('assistant', '<span class="chat-error">Failed to reach AI assistant. Check the OpenRouter configuration.</span>');
         }
     }
 

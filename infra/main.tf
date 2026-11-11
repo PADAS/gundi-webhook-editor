@@ -22,7 +22,6 @@ locals {
     "iamcredentials.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "firestore.googleapis.com",
-    "aiplatform.googleapis.com",
   ]
 }
 
@@ -80,7 +79,6 @@ resource "google_project_iam_member" "deploy" {
 locals {
   runtime_roles = [
     "roles/datastore.user",
-    "roles/aiplatform.user",
   ]
 }
 

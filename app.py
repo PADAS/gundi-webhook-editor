@@ -14,24 +14,22 @@ except ImportError:
     # This is just for the linter, the actual import will work at runtime
     jq = None
 from typing import List, Optional
-from anthropic import AnthropicVertex
+from openai import AsyncOpenAI
 from auth import verify_firebase_token, _init_firebase
 
-VERTEX_AI_PROJECT = os.environ.get("VERTEX_AI_PROJECT") or os.environ.get("GCLOUD_PROJECT") or os.environ.get("FIREBASE_PROJECT_ID")
-VERTEX_AI_LOCATION = os.environ.get("VERTEX_AI_LOCATION", "us-east5")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "").strip() or "https://openrouter.ai/api/v1"
 
-_vertex_client: Optional[AnthropicVertex] = None
+_ai_client: Optional[AsyncOpenAI] = None
 
-def _get_vertex_client() -> Optional[AnthropicVertex]:
-    global _vertex_client
-    if _vertex_client is None:
-        if not VERTEX_AI_PROJECT:
+def _get_ai_client() -> Optional[AsyncOpenAI]:
+    """OpenRouter exposes an OpenAI-compatible API, so we use the OpenAI SDK against it."""
+    global _ai_client
+    if _ai_client is None:
+        if not OPENROUTER_API_KEY:
             return None
-        try:
-            _vertex_client = AnthropicVertex(project_id=VERTEX_AI_PROJECT, region=VERTEX_AI_LOCATION)
-        except Exception:
-            return None
-    return _vertex_client
+        _ai_client = AsyncOpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
+    return _ai_client
 
 # Create FastAPI app
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
@@ -134,7 +132,7 @@ class BulkFilterTestResponse(BaseModel):
 class ShareRequest(BaseModel):
     email: str
 
-_default_ai_model = "claude-sonnet-4@20250514"
+_default_ai_model = "anthropic/claude-sonnet-5.5"
 _ai_models_env = os.environ.get("ALLOWED_AI_MODELS", "")
 ALLOWED_AI_MODELS = (
     [m.strip() for m in re.split(r"[,|]", _ai_models_env) if m.strip()]
@@ -605,9 +603,9 @@ async def webhook_receive(filter_value: str, request: Request, background_tasks:
 
 @app.post("/api/ai/chat", response_model=AIChatResponse)
 async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
-    client = _get_vertex_client()
+    client = _get_ai_client()
     if not client:
-        return AIChatResponse(error="AI assistant not configured. Check Vertex AI configuration.")
+        return AIChatResponse(error="AI assistant not configured. Set OPENROUTER_API_KEY.")
 
     system_prompt = (
         "You are a concise jq expert assistant. Help users write and debug jq filter expressions. "
@@ -623,7 +621,7 @@ async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
     if req.sample_json:
         context_parts.append(f"Sample input JSON: {req.sample_json}")
 
-    messages = []
+    messages = [{"role": "system", "content": system_prompt}]
     if req.history:
         for h in req.history[-10:]:
             if h.get("role") in ("user", "assistant") and h.get("content"):
@@ -637,13 +635,14 @@ async def ai_chat(req: AIChatRequest, user=Depends(verify_firebase_token)):
 
     try:
         model = req.model if req.model in ALLOWED_AI_MODELS else ALLOWED_AI_MODELS[0]
-        response = client.messages.create(
+        response = await client.chat.completions.create(
             model=model,
             max_tokens=1024,
-            system=system_prompt,
             messages=messages,
         )
-        text = response.content[0].text
+        text = response.choices[0].message.content if response.choices else None
+        if not text:
+            return AIChatResponse(error="The model returned an empty response.")
         return AIChatResponse(response=text)
     except Exception as e:
         return AIChatResponse(error=str(e))
